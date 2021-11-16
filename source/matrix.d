@@ -2,12 +2,14 @@ module matrix;
 import std.json;
 import std.net.curl;
 import std.format : format;
+import std.string;
 
 class MatrixClient
 {
 private:
 	static const string[string] NULL_PARAMS;
 
+	uint transactionId;
 	string accessToken;
 
 	string buildUrl(string endpoint, const string[string] params = NULL_PARAMS,
@@ -86,5 +88,51 @@ public:
 	void sync()
 	{
 
+	}
+
+	void sendHTML(string roomId, string html)
+	{
+		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(roomId, transactionId));
+		
+		JSONValue req = JSONValue();
+		req["msgtype"] = "m.text";
+		req["format"] = "org.matrix.custom.html";
+		req["formatted_body"] = html;
+		req["body"] = html;
+
+		string reqs = req.toString();
+
+		JSONValue resp = parseJSON(put(url, reqs));
+
+		transactionId++;
+	}
+
+	void sendString(string roomId, string text)
+	{
+		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(roomId, transactionId));
+		
+		JSONValue req = JSONValue();
+		req["msgtype"] = "m.text";
+		req["body"] = text;
+
+		string reqs = req.toString();
+
+		JSONValue resp = parseJSON(put(url, reqs));
+
+		transactionId++;
+	}
+
+	string resolveRoomAlias(string roomalias)
+	{
+		string url = buildUrl("directory/room/%s".format(
+			translate(roomalias, [
+					'#': "%23",
+					':': "%3A"
+					]
+		)));
+
+		JSONValue resp = parseJSON(get(url));
+
+		return resp["room_id"].str;
 	}
 }

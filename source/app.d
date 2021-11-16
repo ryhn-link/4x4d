@@ -1,6 +1,7 @@
 import std.stdio;
 import matrix;
 import std.process;
+import core.thread;
 
 // Test for the library, this will be removed
 void main()
@@ -14,4 +15,14 @@ void main()
 	{
 		writeln(r);
 	}
+
+	string id = mx.resolveRoomAlias("#testing:ryhn.link");
+
+	mx.sendHTML(
+		id,
+		"<b>bois</b>... today we're gonna be uh testing the matrix API");
+
+	mx.sendString(id, "man...");
+	Thread.sleep(dur!("seconds")( 3 ));
+	mx.sendString(id, "fuck");
 }

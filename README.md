@@ -10,7 +10,8 @@ This library doesn't have any support for commands out of the box, you need to i
 - [ ] Filters  
 - [ ] Joining rooms  
 - [ ] Mark messages as read  
-- [ ] Send message  
+- [x] Send message  
+- [x] Resolve room aliases
 - [ ] Send images  
 - [ ] E2E encryption???  
 
