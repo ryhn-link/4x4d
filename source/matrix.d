@@ -68,6 +68,21 @@ public:
 		this.user_id = resp["user_id"].str;
 	}
 
+	string[] getJoinedRooms()
+	{
+		string url = buildUrl("joined_rooms");
+
+		JSONValue result = parseJSON(get(url));
+		
+		// TODO: Find a better way to do this 💀
+		string[] rooms = [];
+		foreach (r; result["joined_rooms"].array)
+		{
+			rooms ~= r.str;
+		}
+		return rooms;
+	}
+
 	void sync()
 	{
 

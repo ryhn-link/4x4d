@@ -9,4 +9,9 @@ void main()
 	mx.login("rbot", environment["PASSWORD"]);
 
 	writeln(mx.user_id);
+
+	foreach (r; mx.getJoinedRooms())
+	{
+		writeln(r);
+	}
 }
