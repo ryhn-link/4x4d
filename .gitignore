@@ -1,0 +1,15 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/4x4d
+4x4d.so
+4x4d.dylib
+4x4d.dll
+4x4d.a
+4x4d.lib
+4x4d-test-*
+*.exe
+*.o
+*.obj
+*.lst

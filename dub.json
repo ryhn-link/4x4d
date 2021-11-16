@@ -1,0 +1,9 @@
+{
+	"authors": [
+		"ryhon"
+	],
+	"copyright": "Copyright © 2021, ryhon",
+	"description": "Matrix (the chat protocol) Client-Server bot library",
+	"license": "LGPL-3.0",
+	"name": "4x4d"
+}
