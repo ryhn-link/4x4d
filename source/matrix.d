@@ -85,10 +85,55 @@ public:
 		return rooms;
 	}
 
+	void joinRoom(string roomId, JSONValue thirdPartySigned = JSONValue())
+	{
+		// Why the hell are there 2 endpoints that do the *exact* same thing 
+		string url = buildUrl("join/%s".format(
+			translate(roomId, ['#': "%23", ':': "%3A"])
+			));
+
+		post(url);
+	}
+
 	void sync()
 	{
+		import std.stdio;
+		string[string] params;
+		if (nextBatch)
+			params["next_batch"] = nextBatch;
 
+		string url = buildUrl("sync", params);
+
+		JSONValue response = get(url);
+
+		nextBatch = response["next_batch"].str;
+		if ("rooms" in response)
+		{
+			JSONValue rooms = response["rooms"];
+
+			if ("invite" in rooms)
+			{
+				JSONValue invites = rooms["invite"];
+
+				// I hate JSON dictionaries
+				foreach (inv; invites.object.keys)
+				{
+					if (inviteDelegate)
+						inviteDelegate(inv,
+							invites[inv]["invite_state"]["events"][0]["sender"].str);
+				}
+
+			}
+
+			if ("content" in rooms)
+			{
+
+			}
+		}
 	}
+
+	void delegate(string) messageDelegate;
+	void delegate(string, string) inviteDelegate;
 
 	void sendHTML(string roomId, string html)
 	{
