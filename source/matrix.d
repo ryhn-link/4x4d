@@ -1,8 +1,10 @@
 module matrix;
 import std.json;
-import std.net.curl;
 import std.format : format;
 import std.string;
+import std.net.curl : HTTP, CurlCode, ThrowOnError;
+import std.conv;
+import std.range;
 
 class MatrixClient
 {
@@ -25,7 +27,8 @@ private:
 		}
 
 		string paramString = this.makeParamString(params, concat);
-		if (paramString.length) url ~= paramString;
+		if (paramString.length)
+			url ~= paramString;
 
 		return url;
 	}
@@ -44,13 +47,83 @@ private:
 		return result[0 .. $ - 1];
 	}
 
-public:
-	string homeserver, user_id;
+	JSONValue get(string url)
+	{
+		HTTP http = HTTP(url);
+		JSONValue returnbody;
+		string returnstr = "";
+
+		http.method(HTTP.Method.get);
+		http.onReceive = (ubyte[] data) 
+			{
+				returnstr ~= cast(string)data;
+				return data.length;
+			};
+		CurlCode c = http.perform(ThrowOnError.no);
+		returnbody = parseJSON(returnstr);
+		if(c)
+		{
+			throw new MatrixException(c, returnbody);
+		}
+		return returnbody;
+	}
+
+	JSONValue post(string url, JSONValue reqbody = JSONValue())
+	{
+		HTTP http = HTTP(url);
+		JSONValue returnbody;
+		string returnstr = "";
+
+		http.method(HTTP.Method.post);
+		http.postData(reqbody.toString);
+		http.onReceive = (ubyte[] data) 
+			{
+				returnstr ~= cast(string)data;
+				return data.length;
+			};
+		CurlCode c = http.perform(ThrowOnError.no);
+		returnbody = parseJSON(returnstr);
+
+		if(c)
+		{
+			throw new MatrixException(c, returnbody);
+		}
+		return returnbody;
+	}
+
+	JSONValue put(string url, JSONValue reqbody = JSONValue())
+	{
+		HTTP http = HTTP(url);
+		JSONValue returnbody;
+		string returnstr = "";
+
+		http.method(HTTP.Method.put);
+		http.postData(reqbody.toString);
+		http.onReceive = (ubyte[] data) 
+			{
+				returnstr ~= cast(string)data;
+				return data.length;
+			};
+		CurlCode c = http.perform(ThrowOnError.no);
+		returnbody = parseJSON(returnstr);
+		if(c)
+		{
+			throw new MatrixException(c, returnbody);
+		}
+		return returnbody;
+	}
+
+	string homeserver, user_id, accessToken;
+	bool useNotice = true;
+
+	string getTextMessageType()
+	{
+		return useNotice ? "m.notice" : "m.text";
+	}
 
 	this(string homeserver = "https://matrix.org")
 	{
 		this.homeserver = homeserver;
-
 		// Check well known matrix
 	}
 
@@ -62,10 +135,8 @@ public:
 		req["user"] = user;
 		req["password"] = password;
 
-		string reqs = req.toString();
+		JSONValue resp = post(url, req);
 
-		JSONValue resp = parseJSON(post(url, reqs));
-		
 		this.accessToken = resp["access_token"].str;
 		this.user_id = resp["user_id"].str;
 	}
@@ -74,8 +145,8 @@ public:
 	{
 		string url = buildUrl("joined_rooms");
 
-		JSONValue result = parseJSON(get(url));
-		
+		JSONValue result = get(url);
+
 		// TODO: Find a better way to do this 💀
 		string[] rooms = [];
 		foreach (r; result["joined_rooms"].array)
@@ -138,16 +209,14 @@ public:
 	void sendHTML(string roomId, string html)
 	{
 		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(roomId, transactionId));
-		
+
 		JSONValue req = JSONValue();
 		req["msgtype"] = "m.text";
 		req["format"] = "org.matrix.custom.html";
 		req["formatted_body"] = html;
 		req["body"] = html;
 
-		string reqs = req.toString();
-
-		JSONValue resp = parseJSON(put(url, reqs));
+		put(url, req);
 
 		transactionId++;
 	}
@@ -155,14 +224,12 @@ public:
 	void sendString(string roomId, string text)
 	{
 		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(roomId, transactionId));
-		
+
 		JSONValue req = JSONValue();
 		req["msgtype"] = "m.text";
 		req["body"] = text;
 
-		string reqs = req.toString();
-
-		JSONValue resp = parseJSON(put(url, reqs));
+		put(url, req);
 
 		transactionId++;
 	}
@@ -176,8 +243,24 @@ public:
 					]
 		)));
 
-		JSONValue resp = parseJSON(get(url));
+		JSONValue resp = get(url);
 
 		return resp["room_id"].str;
+	}
+}
+
+class MatrixException : Exception
+{
+	string errcode, error;
+	int statuscode;
+	this(int statuscode, JSONValue json)
+	{
+		this.statuscode = statuscode;
+		if("errcode" in json)
+			errcode = json["errcode"].str;
+		if("error" in json)
+			error = json["error"].str;
+
+		super(statuscode.to!string ~ " - " ~ errcode ~ ":" ~ error);
 	}
 }
