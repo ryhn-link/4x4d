@@ -7,8 +7,10 @@ This library doesn't have any support for commands out of the box, you need to i
 - [x] Password login  
 - [x] List joined rooms  
 - [ ] Sync  
+	- [x] Receiving invites  
+	- [ ] Receiving messages
 - [ ] Filters  
-- [ ] Joining rooms  
+- [x] Joining rooms  
 - [ ] Mark messages as read  
 - [x] Send message  
 - [x] Resolve room aliases
