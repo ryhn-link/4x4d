@@ -10,9 +10,9 @@ class MatrixClient
 {
 private:
 	static const string[string] NULL_PARAMS;
-
+public:
 	uint transactionId;
-	string accessToken;
+	string nextBatch;
 
 	string buildUrl(string endpoint, const string[string] params = NULL_PARAMS,
 			string apiVersion = "unstable", string section = "client")
@@ -211,7 +211,7 @@ private:
 		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(roomId, transactionId));
 
 		JSONValue req = JSONValue();
-		req["msgtype"] = "m.text";
+		req["msgtype"] = getTextMessageType();
 		req["format"] = "org.matrix.custom.html";
 		req["formatted_body"] = html;
 		req["body"] = html;
@@ -226,7 +226,7 @@ private:
 		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(roomId, transactionId));
 
 		JSONValue req = JSONValue();
-		req["msgtype"] = "m.text";
+		req["msgtype"] = getTextMessageType();
 		req["body"] = text;
 
 		put(url, req);
@@ -236,12 +236,8 @@ private:
 
 	string resolveRoomAlias(string roomalias)
 	{
-		string url = buildUrl("directory/room/%s".format(
-			translate(roomalias, [
-					'#': "%23",
-					':': "%3A"
-					]
-		)));
+		string url = buildUrl("directory/room/%s".format(translate(roomalias,
+				['#': "%23", ':': "%3A"])));
 
 		JSONValue resp = get(url);
 

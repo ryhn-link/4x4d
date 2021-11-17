@@ -1,22 +1,28 @@
-import std.stdio;
 import matrix;
+import std.stdio : writeln;
 import std.process;
 import core.thread;
+import std.file;
 import std.string;
 import std.functional;
 import std.conv;
 
+MatrixClient mx;
 // Test for the library, this will be removed
 void main()
 {
-	auto mx = new MatrixClient("https://ryhn.link");
-	mx.login("rbot", environment["PASSWORD"]);
+	mx = new MatrixClient("https://ryhn.link");
 
-	writeln(mx.user_id);
-
-	foreach (r; mx.getJoinedRooms())
+	if(exists("token"))
 	{
-		writeln(r);
+		mx.accessToken = readText("token");
+		// You probably want to get user info here
+	}
+	else
+	{
+		mx.login("rbot", environment["PASSWORD"]);
+
+		write("token", mx.accessToken);
 	}
 
 	writeln("Logged in as " ~ mx.user_id);
