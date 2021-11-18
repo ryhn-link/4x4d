@@ -52,7 +52,8 @@ public:
 		return translate(roomId, ['#': "%23", ':': "%3A"]);
 	}
 
-	JSONValue makeHttpRequest(string method)(string url, JSONValue data = JSONValue(), HTTP http = HTTP())
+	JSONValue makeHttpRequest(string method)(string url,
+			JSONValue data = JSONValue(), HTTP http = HTTP())
 	{
 		http.url(url);
 		JSONValue returnbody;
@@ -74,7 +75,7 @@ public:
 		//writeln(method ~ " " ~ url);
 		//writeln(data.toString);
 
-		if(!data.isNull)
+		if (!data.isNull)
 			http.postData(data.toString);
 		http.onReceive = (ubyte[] data) {
 			returnstr ~= cast(string) data;
@@ -108,6 +109,7 @@ public:
 
 		// std.net.curl.put works fine
 		import std.net.curl : cput = put;
+
 		return parseJSON(cput(url, data.toString()));
 	}
 
@@ -230,9 +232,29 @@ public:
 		transactionId++;
 	}
 
+	void sendFile(string roomId, string filename, string mxc, string msgtype = "m.file")
+	{
+		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(roomId),
+				transactionId));
+
+		JSONValue req = JSONValue();
+		req["msgtype"] = msgtype;
+		req["url"] = mxc;
+		req["body"] = filename;
+
+		put(url, req);
+
+		transactionId++;
+	}
+
+	void sendImage(string roomId, string filename, string mxc)
+	{
+		sendFile(roomId, "m.image", filename, mxc);
+	}
+
 	string uploadFile(const void[] data, string filename, string mimetype)
 	{
-		string[string] params = ["filename": filename];
+		string[string] params = ["filename" : filename];
 		string url = buildUrl("upload", params, "r0", "media");
 
 		// TODO: Ratelimits
