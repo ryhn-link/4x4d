@@ -194,14 +194,97 @@ public:
 
 			}
 
-			if ("content" in rooms)
+			if ("join" in rooms)
 			{
+				foreach (roomId; rooms["join"].object.keys)
+				{
+					if ("timeline" in rooms["join"][roomId])
+					{
+						if ("events" in rooms["join"][roomId]["timeline"])
+						{
+							foreach (ev; rooms["join"][roomId]["timeline"]["events"].array)
+							{
+								switch (ev["type"].str)
+								{
+									// New message
+								case "m.room.message":
+									auto content = ev["content"];
+									if (!("msgtype" in content))
+										break;
+									string msgtype = ev["content"]["msgtype"].str;
+									switch (msgtype)
+									{
+									case "m.text":
+									case "m.notice":
+										if (messageDelegate)
+										{
+											MatrixTextMessage text = new MatrixTextMessage();
 
+											text.roomId = roomId;
+											text.type = msgtype;
+											text.age = ev["unsigned"]["age"].integer;
+											text.author = ev["sender"].str;
+											text.eventId = ev["event_id"].str;
+
+											if ("body" in content)
+												text.conent = content["body"].str;
+											if ("format" in content)
+												text.format = content["format"].str;
+											if ("formatted_body" in content)
+												text.formattedContent
+													= content["formatted_body"].str;
+
+											messageDelegate(text);
+										}
+										break;
+
+										// TODO
+									default:
+									case "m.file":
+									case "m.image":
+									case "m.audio":
+									case "m.video":
+										if (messageDelegate)
+										{
+											MatrixMessage msg = new MatrixMessage();
+
+											msg.roomId = roomId;
+											msg.type = msgtype;
+											msg.age = ev["unsigned"]["age"].integer;
+											msg.author = ev["sender"].str;
+											msg.eventId = ev["event_id"].str;
+
+											messageDelegate(msg);
+										}
+									}
+
+									break;
+									// Membership change
+								case "m.room.member":
+									break;
+								default:
+									break;
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 	}
 
-	void delegate(string) messageDelegate;
+	void markRead(string roomId, string eventId)
+	{
+		string url = buildUrl("rooms/%s/read_markers".format(translateRoomId(roomId)));
+
+		JSONValue req = JSONValue();
+		req["m.fully_read"] = eventId;
+		req["m.read"] = eventId;
+
+		post(url, req);
+	}
+
+	void delegate(MatrixMessage) messageDelegate;
 	void delegate(string, string) inviteDelegate;
 
 	void sendHTML(string roomId, string html)
@@ -291,4 +374,15 @@ class MatrixException : Exception
 
 		super(statuscode.to!string ~ " - " ~ errcode ~ ":" ~ error);
 	}
+}
+
+class MatrixMessage
+{
+	string author, type, roomId, eventId;
+	long age;
+}
+
+class MatrixTextMessage : MatrixMessage
+{
+	string conent, format, formattedContent;
 }
