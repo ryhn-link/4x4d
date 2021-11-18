@@ -63,7 +63,10 @@ public:
 		else static if (method == "POST")
 			http.method(HTTP.Method.post);
 		else static if (method == "PUT")
+		{
+			// Using the HTTP struct with PUT seems to hang, don't use it
 			http.method(HTTP.Method.put);
+		}
 		else static if (method == "DELETE")
 			http.method(HTTP.Method.del);
 
@@ -99,7 +102,12 @@ public:
 
 	JSONValue put(string url, JSONValue data = JSONValue())
 	{
-		return makeHttpRequest!("PUT")(url, data);
+		// Using the HTTP struct with PUT seems to hang
+		// return makeHttpRequest!("PUT")(url, data);
+
+		// std.net.curl.put works fine
+		import std.net.curl : cput = put;
+		return parseJSON(cput(url, data.toString()));
 	}
 
 	string homeserver, user_id, accessToken;
