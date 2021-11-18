@@ -6,16 +6,16 @@ This library doesn't have any support for commands out of the box, you need to i
 ## Supported features
 - [x] Password login  
 - [x] List joined rooms  
-- [ ] Sync  
+- [x] Sync  
 	- [x] Receiving invites  
-	- [ ] Receiving messages
+	- [X] Receiving messages (Text messages only for now)
 - [ ] Filters  
 - [x] Joining rooms  
-- [ ] Mark messages as read  
+- [x] Mark messages as read  
 - [x] Send message  
 - [x] Resolve room aliases
 - [x] Uploading files
-- [ ] Send images  
+- [x] Send images (Note: on Element Web they fail to load, the img src URL gives 404)
 - [ ] E2E encryption???  
 
 ## License
