@@ -81,6 +81,7 @@ public:
 			returnstr ~= cast(string) data;
 			return data.length;
 		};
+		//http.verbose(true);
 		CurlCode c = http.perform(ThrowOnError.no);
 		//writeln(c);
 		//writeln(returnstr);
@@ -170,7 +171,7 @@ public:
 
 		string[string] params;
 		if (nextBatch)
-			params["next_batch"] = nextBatch;
+			params["since"] = nextBatch;
 
 		string url = buildUrl("sync", params);
 
@@ -289,7 +290,8 @@ public:
 
 	void sendHTML(string roomId, string html)
 	{
-		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(roomId), transactionId));
+		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(roomId),
+				transactionId));
 
 		JSONValue req = JSONValue();
 		req["msgtype"] = getTextMessageType();
@@ -304,7 +306,8 @@ public:
 
 	void sendString(string roomId, string text)
 	{
-		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(roomId), transactionId));
+		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(roomId),
+				transactionId));
 
 		JSONValue req = JSONValue();
 		req["msgtype"] = getTextMessageType();
