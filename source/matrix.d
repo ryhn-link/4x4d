@@ -47,70 +47,59 @@ public:
 		return result[0 .. $ - 1];
 	}
 
+	string translateRoomId(string roomId)
+	{
+		return translate(roomId, ['#': "%23", ':': "%3A"]);
+	}
+
+	JSONValue makeHttpRequest(string method)(string url, JSONValue data = JSONValue())
+	{
+		HTTP http = HTTP(url);
+		JSONValue returnbody;
+		string returnstr = "";
+
+		static if (method == "GET")
+			http.method(HTTP.Method.get);
+		else static if (method == "POST")
+			http.method(HTTP.Method.post);
+		else static if (method == "PUT")
+			http.method(HTTP.Method.put);
+		else static if (method == "DELETE")
+			http.method(HTTP.Method.del);
+
+		//import std.stdio;
+		//writeln(method ~ " " ~ url);
+		//writeln(data.toString);
+
+		http.postData(data.toString);
+		http.onReceive = (ubyte[] data) {
+			returnstr ~= cast(string) data;
+			return data.length;
+		};
+		CurlCode c = http.perform(ThrowOnError.no);
+		returnbody = parseJSON(returnstr);
+		//writeln(c);
+		//writeln(returnstr);
+		if (c)
+		{
+			throw new MatrixException(c, returnbody);
+		}
+		return returnbody;
+	}
+
 	JSONValue get(string url)
 	{
-		HTTP http = HTTP(url);
-		JSONValue returnbody;
-		string returnstr = "";
-
-		http.method(HTTP.Method.get);
-		http.onReceive = (ubyte[] data) 
-			{
-				returnstr ~= cast(string)data;
-				return data.length;
-			};
-		CurlCode c = http.perform(ThrowOnError.no);
-		returnbody = parseJSON(returnstr);
-		if(c)
-		{
-			throw new MatrixException(c, returnbody);
-		}
-		return returnbody;
+		return makeHttpRequest!("GET")(url);
 	}
 
-	JSONValue post(string url, JSONValue reqbody = JSONValue())
+	JSONValue post(string url, JSONValue data = JSONValue())
 	{
-		HTTP http = HTTP(url);
-		JSONValue returnbody;
-		string returnstr = "";
-
-		http.method(HTTP.Method.post);
-		http.postData(reqbody.toString);
-		http.onReceive = (ubyte[] data) 
-			{
-				returnstr ~= cast(string)data;
-				return data.length;
-			};
-		CurlCode c = http.perform(ThrowOnError.no);
-		returnbody = parseJSON(returnstr);
-
-		if(c)
-		{
-			throw new MatrixException(c, returnbody);
-		}
-		return returnbody;
+		return makeHttpRequest!("POST")(url, data);
 	}
 
-	JSONValue put(string url, JSONValue reqbody = JSONValue())
+	JSONValue put(string url, JSONValue data = JSONValue())
 	{
-		HTTP http = HTTP(url);
-		JSONValue returnbody;
-		string returnstr = "";
-
-		http.method(HTTP.Method.put);
-		http.postData(reqbody.toString);
-		http.onReceive = (ubyte[] data) 
-			{
-				returnstr ~= cast(string)data;
-				return data.length;
-			};
-		CurlCode c = http.perform(ThrowOnError.no);
-		returnbody = parseJSON(returnstr);
-		if(c)
-		{
-			throw new MatrixException(c, returnbody);
-		}
-		return returnbody;
+		return makeHttpRequest!("PUT")(url, data);
 	}
 
 	string homeserver, user_id, accessToken;
@@ -159,9 +148,7 @@ public:
 	void joinRoom(string roomId, JSONValue thirdPartySigned = JSONValue())
 	{
 		// Why the hell are there 2 endpoints that do the *exact* same thing 
-		string url = buildUrl("join/%s".format(
-			translate(roomId, ['#': "%23", ':': "%3A"])
-			));
+		string url = buildUrl("join/%s".format(translateRoomId(roomId)));
 
 		post(url);
 	}
@@ -169,6 +156,7 @@ public:
 	void sync()
 	{
 		import std.stdio;
+
 		string[string] params;
 		if (nextBatch)
 			params["next_batch"] = nextBatch;
@@ -190,8 +178,7 @@ public:
 				foreach (inv; invites.object.keys)
 				{
 					if (inviteDelegate)
-						inviteDelegate(inv,
-							invites[inv]["invite_state"]["events"][0]["sender"].str);
+						inviteDelegate(inv, invites[inv]["invite_state"]["events"][0]["sender"].str);
 				}
 
 			}
@@ -208,7 +195,7 @@ public:
 
 	void sendHTML(string roomId, string html)
 	{
-		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(roomId, transactionId));
+		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(roomId), transactionId));
 
 		JSONValue req = JSONValue();
 		req["msgtype"] = getTextMessageType();
@@ -223,7 +210,7 @@ public:
 
 	void sendString(string roomId, string text)
 	{
-		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(roomId, transactionId));
+		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(roomId), transactionId));
 
 		JSONValue req = JSONValue();
 		req["msgtype"] = getTextMessageType();
@@ -252,9 +239,9 @@ class MatrixException : Exception
 	this(int statuscode, JSONValue json)
 	{
 		this.statuscode = statuscode;
-		if("errcode" in json)
+		if ("errcode" in json)
 			errcode = json["errcode"].str;
-		if("error" in json)
+		if ("error" in json)
 			error = json["error"].str;
 
 		super(statuscode.to!string ~ " - " ~ errcode ~ ":" ~ error);
