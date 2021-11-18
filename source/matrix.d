@@ -52,9 +52,9 @@ public:
 		return translate(roomId, ['#': "%23", ':': "%3A"]);
 	}
 
-	JSONValue makeHttpRequest(string method)(string url, JSONValue data = JSONValue())
+	JSONValue makeHttpRequest(string method)(string url, JSONValue data = JSONValue(), HTTP http = HTTP())
 	{
-		HTTP http = HTTP(url);
+		http.url(url);
 		JSONValue returnbody;
 		string returnstr = "";
 
@@ -74,15 +74,16 @@ public:
 		//writeln(method ~ " " ~ url);
 		//writeln(data.toString);
 
-		http.postData(data.toString);
+		if(!data.isNull)
+			http.postData(data.toString);
 		http.onReceive = (ubyte[] data) {
 			returnstr ~= cast(string) data;
 			return data.length;
 		};
 		CurlCode c = http.perform(ThrowOnError.no);
-		returnbody = parseJSON(returnstr);
 		//writeln(c);
 		//writeln(returnstr);
+		returnbody = parseJSON(returnstr);
 		if (c)
 		{
 			throw new MatrixException(c, returnbody);
@@ -227,6 +228,20 @@ public:
 		put(url, req);
 
 		transactionId++;
+	}
+
+	string uploadFile(const void[] data, string filename, string mimetype)
+	{
+		string[string] params = ["filename": filename];
+		string url = buildUrl("upload", params, "r0", "media");
+
+		// TODO: Ratelimits
+		HTTP http = HTTP();
+		http.postData(data);
+		http.addRequestHeader("Content-Type", mimetype);
+		JSONValue resp = makeHttpRequest!("POST")(url, JSONValue(), http);
+
+		return resp["content_uri"].str;
 	}
 
 	string resolveRoomAlias(string roomalias)
