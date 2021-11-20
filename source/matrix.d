@@ -288,11 +288,12 @@ public:
 	void delegate(MatrixMessage) messageDelegate;
 	void delegate(string, string) inviteDelegate;
 
-	void sendHTML(string roomId, string html)
+	void sendHTML(string roomId, string html, string fallback = null)
 	{
 		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(roomId),
 				transactionId));
 
+		if(!fallback) fallback = html;
 		JSONValue req = JSONValue();
 		req["msgtype"] = getTextMessageType();
 		req["format"] = "org.matrix.custom.html";
