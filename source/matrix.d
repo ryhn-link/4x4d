@@ -228,7 +228,7 @@ public:
 											text.eventId = ev["event_id"].str;
 
 											if ("body" in content)
-												text.conent = content["body"].str;
+												text.content = content["body"].str;
 											if ("format" in content)
 												text.format = content["format"].str;
 											if ("formatted_body" in content)
