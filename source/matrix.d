@@ -298,7 +298,7 @@ public:
 		req["msgtype"] = getTextMessageType();
 		req["format"] = "org.matrix.custom.html";
 		req["formatted_body"] = html;
-		req["body"] = html;
+		req["body"] = fallback;
 
 		put(url, req);
 
