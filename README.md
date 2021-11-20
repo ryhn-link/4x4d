@@ -19,6 +19,5 @@ This library doesn't have any support for commands out of the box, you need to i
 - [ ] E2E encryption???  
 
 ## License
-This project is licensed under the [GNU Lesser General Public License
-](https://www.gnu.org/licenses/lgpl-3.0.en.html).  
+This project is licensed under the [GNU Lesser General Public License](https://www.gnu.org/licenses/lgpl-3.0.en.html).  
 This project may use parts of [dotty](https://github.com/rinfz/dotty)
