@@ -388,5 +388,5 @@ class MatrixMessage
 
 class MatrixTextMessage : MatrixMessage
 {
-	string conent, format, formattedContent;
+	string content, format, formattedContent;
 }
