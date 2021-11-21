@@ -15,7 +15,7 @@ public:
 	string nextBatch;
 
 	string buildUrl(string endpoint, const string[string] params = NULL_PARAMS,
-			string apiVersion = "unstable", string section = "client")
+		string apiVersion = "unstable", string section = "client")
 	{
 		string url = "%s/_matrix/%s/%s/%s".format(this.homeserver, section, apiVersion, endpoint);
 		char concat = '?';
@@ -53,7 +53,7 @@ public:
 	}
 
 	JSONValue makeHttpRequest(string method)(string url,
-			JSONValue data = JSONValue(), HTTP http = HTTP())
+		JSONValue data = JSONValue(), HTTP http = HTTP())
 	{
 		http.url(url);
 		JSONValue returnbody;
@@ -114,7 +114,7 @@ public:
 		return parseJSON(cput(url, data.toString()));
 	}
 
-	string homeserver, user_id, accessToken;
+	string homeserver, userId, accessToken, deviceId;
 	bool useNotice = true;
 
 	string getTextMessageType()
@@ -128,18 +128,23 @@ public:
 		// Check well known matrix
 	}
 
-	void login(string user, string password)
+	void passwordLogin(string user, string password, string device_id = null)
 	{
 		string url = buildUrl("login");
 		JSONValue req = JSONValue();
 		req["type"] = "m.login.password";
 		req["user"] = user;
 		req["password"] = password;
+		if (device_id)
+			req["device_id"] = device_id;
 
 		JSONValue resp = post(url, req);
 
 		this.accessToken = resp["access_token"].str;
-		this.user_id = resp["user_id"].str;
+		this.userId = resp["user_id"].str;
+		this.deviceId = resp["device_id"].str;
+	}
+
 	MatrixDeviceInfo[] getDevices()
 	{
 		string url = buildUrl("devices");
@@ -344,7 +349,8 @@ public:
 		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(roomId),
 				transactionId));
 
-		if(!fallback) fallback = html;
+		if (!fallback)
+			fallback = html;
 		JSONValue req = JSONValue();
 		req["msgtype"] = getTextMessageType();
 		req["format"] = "org.matrix.custom.html";
@@ -392,7 +398,7 @@ public:
 
 	string uploadFile(const void[] data, string filename, string mimetype)
 	{
-		string[string] params = ["filename" : filename];
+		string[string] params = ["filename": filename];
 		string url = buildUrl("upload", params, "r0", "media");
 
 		// TODO: Ratelimits
