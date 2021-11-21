@@ -221,13 +221,14 @@ public:
 		return rooms;
 	}
 
-	void joinRoom(string roomId, JSONValue thirdPartySigned = JSONValue())
 	/// Joins a room by it's room id or alias, retuns it's room id
+	string joinRoom(string roomId)
 	{
 		// Why the hell are there 2 endpoints that do the *exact* same thing 
 		string url = buildUrl("join/%s".format(translateRoomId(roomId)));
 
-		post(url);
+		JSONValue ret = post(url);
+		return ret["room_id"].str;
 	}
 
 	/// Fetch new events
