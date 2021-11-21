@@ -128,6 +128,9 @@ public:
 		// Check well known matrix
 	}
 
+	/// Log in to the matrix server using a username and password.
+	/// deviceId is optional, if none provided, server will generate it's own
+	/// If provided, server will invalidate the previous access token for this device
 	void passwordLogin(string user, string password, string device_id = null)
 	{
 		string url = buildUrl("login");
@@ -145,6 +148,7 @@ public:
 		this.deviceId = resp["device_id"].str;
 	}
 
+	/// Get information about all devices for current user
 	MatrixDeviceInfo[] getDevices()
 	{
 		string url = buildUrl("devices");
@@ -168,6 +172,7 @@ public:
 		return inf;
 	}
 
+	/// Get information for a single device by it's device id
 	MatrixDeviceInfo getDeviceInfo(string device_id)
 	{
 		string url = buildUrl("devices/%s".format(device_id));
@@ -185,6 +190,8 @@ public:
 		return i;
 	}
 
+	/// Updates the display name for a device
+	/// device_id is optional, if null, current device ID will be used
 	void setDeviceName(string name, string device_id = null)
 	{
 		if (!device_id)
@@ -198,6 +205,7 @@ public:
 		put(url, req);
 	}
 
+	/// ditto
 	string[] getJoinedRooms()
 	{
 		string url = buildUrl("joined_rooms");
@@ -214,6 +222,7 @@ public:
 	}
 
 	void joinRoom(string roomId, JSONValue thirdPartySigned = JSONValue())
+	/// Joins a room by it's room id or alias, retuns it's room id
 	{
 		// Why the hell are there 2 endpoints that do the *exact* same thing 
 		string url = buildUrl("join/%s".format(translateRoomId(roomId)));
@@ -221,6 +230,7 @@ public:
 		post(url);
 	}
 
+	/// Fetch new events
 	void sync()
 	{
 		import std.stdio;
@@ -330,6 +340,7 @@ public:
 		}
 	}
 
+	/// Sets the position of the read marker for given room
 	void markRead(string roomId, string eventId)
 	{
 		string url = buildUrl("rooms/%s/read_markers".format(translateRoomId(roomId)));
@@ -341,9 +352,13 @@ public:
 		post(url, req);
 	}
 
+	/// Called when a new message is received
 	void delegate(MatrixMessage) messageDelegate;
+	/// Called when a new invite is received
 	void delegate(string, string) inviteDelegate;
-
+	
+	/// Sends a m.room.message with format of org.matrix.custom.html
+	/// fallback is the plain text version of html if the client doesn't support html
 	void sendHTML(string roomId, string html, string fallback = null)
 	{
 		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(roomId),
@@ -362,6 +377,7 @@ public:
 		transactionId++;
 	}
 
+	/// Sends a m.room.message
 	void sendString(string roomId, string text)
 	{
 		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(roomId),
@@ -376,6 +392,7 @@ public:
 		transactionId++;
 	}
 
+	/// Sends a m.room.message with specified msgtype and MXC URI
 	void sendFile(string roomId, string filename, string mxc, string msgtype = "m.file")
 	{
 		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(roomId),
@@ -391,11 +408,13 @@ public:
 		transactionId++;
 	}
 
+	/// Sends a m.room.message with type of m.image with specified MXC URI
 	void sendImage(string roomId, string filename, string mxc)
 	{
 		sendFile(roomId, "m.image", filename, mxc);
 	}
 
+	/// Uploads a file to the server and returns the MXC URI
 	string uploadFile(const void[] data, string filename, string mimetype)
 	{
 		string[string] params = ["filename": filename];
@@ -410,6 +429,7 @@ public:
 		return resp["content_uri"].str;
 	}
 
+	/// Resolves the room alias to a room id, no authentication required
 	string resolveRoomAlias(string roomalias)
 	{
 		string url = buildUrl("directory/room/%s".format(translate(roomalias,
@@ -420,6 +440,8 @@ public:
 		return resp["room_id"].str;
 	}
 
+	/// Sets your presence
+	/// NOTE: No clients support status messages yet
 	void setPresence(MatrixPresenceEnum presence, string status_msg = null)
 	{
 		string url = buildUrl("presence/%s/status".format(userId));
@@ -428,10 +450,13 @@ public:
 		req["presence"] = presence;
 		if (status_msg)
 			req["status_msg"] = status_msg;
+		else 
+			req["status_msg"] = "";
 
 		put(url, req);
 	}
 
+	/// Gets the specified user's presence
 	MatrixPresence getPresence(string userId = null)
 	{
 		if (!userId)
@@ -454,6 +479,7 @@ public:
 		return p;
 	}
 
+	/// Gets custom account data with specified type
 	JSONValue getAccountData(string type)
 	{
 		string url = buildUrl("user/%s/account_data/%s".format(userId, type));
@@ -463,6 +489,7 @@ public:
 		return resp;
 	}
 
+	/// Sets custom account data for specified type
 	void setAccountData(string type, JSONValue data)
 	{
 		string url = buildUrl("user/%s/account_data/%s".format(userId, type));
@@ -470,6 +497,9 @@ public:
 		put(url, data);
 	}
 
+	/// Get custom account data with specified type for the given room
+	/// NOTE: Room aliases don't have the same data as their resolved room ids
+	/// NOTE 2: Synapse doesn't seem to validate the room id, so you can put anything in place of it
 	JSONValue getRoomData(string room_id, string type)
 	{
 		string url = buildUrl("user/%s/rooms/%s/account_data/%s".format(userId,
@@ -480,6 +510,9 @@ public:
 		return resp;
 	}
 
+	/// Set custom account data with specified type for the given room
+	/// NOTE: Room aliases don't have the same data as their resolved room ids
+	/// NOTE 2: Synapse doesn't seem to validate the room id, so you can put anything in place of it
 	void setRoomData(string room_id, string type, JSONValue data)
 	{
 		string url = buildUrl("user/%s/rooms/%s/account_data/%s".format(userId,
