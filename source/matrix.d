@@ -426,7 +426,7 @@ public:
 
 		JSONValue req;
 		req["presence"] = presence;
-		if(status_msg)
+		if (status_msg)
 			req["status_msg"] = status_msg;
 
 		put(url, req);
@@ -434,23 +434,58 @@ public:
 
 	MatrixPresence getPresence(string userId = null)
 	{
-		if(!userId)
+		if (!userId)
 			userId = this.userId;
-		
+
 		string url = buildUrl("presence/%s/status".format(userId));
 
 		JSONValue resp = get(url);
 		import std.stdio;
+
 		writeln(resp);
 		MatrixPresence p = new MatrixPresence();
-		if("currently_active" in resp)
+		if ("currently_active" in resp)
 			p.currentlyActive = resp["currently_active"].boolean;
 		p.lastActiveAgo = resp["last_active_ago"].integer;
 		p.presence = resp["presence"].str.to!MatrixPresenceEnum;
-		if(!resp["status_msg"].isNull)
+		if (!resp["status_msg"].isNull)
 			p.statusMessage = resp["status_msg"].str;
 
 		return p;
+	}
+
+	JSONValue getAccountData(string type)
+	{
+		string url = buildUrl("user/%s/account_data/%s".format(userId, type));
+
+		JSONValue resp = get(url);
+
+		return resp;
+	}
+
+	void setAccountData(string type, JSONValue data)
+	{
+		string url = buildUrl("user/%s/account_data/%s".format(userId, type));
+
+		put(url, data);
+	}
+
+	JSONValue getRoomData(string room_id, string type)
+	{
+		string url = buildUrl("user/%s/rooms/%s/account_data/%s".format(userId,
+				translateRoomId(room_id), type));
+
+		JSONValue resp = get(url);
+
+		return resp;
+	}
+
+	void setRoomData(string room_id, string type, JSONValue data)
+	{
+		string url = buildUrl("user/%s/rooms/%s/account_data/%s".format(userId,
+				translateRoomId(room_id), type));
+
+		put(url, data);
 	}
 }
 

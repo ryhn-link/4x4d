@@ -6,6 +6,7 @@ import std.file;
 import std.string;
 import std.functional;
 import std.conv;
+import std.json;
 
 MatrixClient mx;
 void main()
@@ -23,6 +24,24 @@ void main()
 	mx.setPresence(MatrixPresenceEnum.unavailable, "I am doing stuff!");
 	writeln(mx.getPresence(mx.userId).presence);
 
+	JSONValue bigchungus = JSONValue();
+	bigchungus["funny"] = 999_999;
+	mx.setAccountData("rbot.bigchungus", bigchungus);
+	writeln(mx.getAccountData("rbot.bigchungus"));
+
+	JSONValue amongus = JSONValue();
+	amongus["red"] = "sus";
+	amongus["black"] = "vented";
+	amongus["cyan"] = "dead";
+	mx.setRoomData("#testing:ryhn.link", "rbot.amongus", amongus);
+	writeln(mx.getRoomData("#testing:ryhn.link", "rbot.amongus"));
+
+	// Oh? Aliases and room ids don't store the same data
+	string id = mx.resolveRoomAlias("#testing:ryhn.link");
+	writeln(id);
+	mx.setRoomData(id, "rbot.amongus", amongus);
+	writeln(mx.getRoomData(id, "rbot.amongus"));
+
 	mx.sync();
 
 	mx.messageDelegate = (&onMessage).toDelegate;
@@ -30,8 +49,8 @@ void main()
 
 void onMessage(MatrixMessage m)
 {
-	if(MatrixTextMessage txt = cast(MatrixTextMessage)m)
+	if (MatrixTextMessage txt = cast(MatrixTextMessage) m)
 	{
-		
+
 	}
 }

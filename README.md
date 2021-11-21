@@ -18,6 +18,9 @@ This library doesn't have any support for commands out of the box, you need to i
 - [x] Send images (Note: on Element Web they fail to load, the img src URL gives 404)
 - [x] Device info
 - [x] Presence
+- [x] Storing and getting config data
+- [ ] Creating rooms
+- [ ] Direct messages
 - [ ] E2E encryption???  
 
 ## License
