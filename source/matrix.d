@@ -419,6 +419,39 @@ public:
 
 		return resp["room_id"].str;
 	}
+
+	void setPresence(MatrixPresenceEnum presence, string status_msg = null)
+	{
+		string url = buildUrl("presence/%s/status".format(userId));
+
+		JSONValue req;
+		req["presence"] = presence;
+		if(status_msg)
+			req["status_msg"] = status_msg;
+
+		put(url, req);
+	}
+
+	MatrixPresence getPresence(string userId = null)
+	{
+		if(!userId)
+			userId = this.userId;
+		
+		string url = buildUrl("presence/%s/status".format(userId));
+
+		JSONValue resp = get(url);
+		import std.stdio;
+		writeln(resp);
+		MatrixPresence p = new MatrixPresence();
+		if("currently_active" in resp)
+			p.currentlyActive = resp["currently_active"].boolean;
+		p.lastActiveAgo = resp["last_active_ago"].integer;
+		p.presence = resp["presence"].str.to!MatrixPresenceEnum;
+		if(!resp["status_msg"].isNull)
+			p.statusMessage = resp["status_msg"].str;
+
+		return p;
+	}
 }
 
 class MatrixException : Exception
@@ -446,4 +479,18 @@ class MatrixMessage
 class MatrixTextMessage : MatrixMessage
 {
 	string content, format, formattedContent;
+}
+class MatrixPresence
+{
+	bool currentlyActive;
+	long lastActiveAgo;
+	MatrixPresenceEnum presence;
+	string statusMessage;
+}
+
+enum MatrixPresenceEnum : string
+{
+	online = "online",
+	offline = "offline",
+	unavailable = "unavailable"
 }
