@@ -16,6 +16,7 @@ This library doesn't have any support for commands out of the box, you need to i
 - [x] Resolve room aliases
 - [x] Uploading files
 - [x] Send images (Note: on Element Web they fail to load, the img src URL gives 404)
+- [x] Device info
 - [ ] E2E encryption???  
 
 ## License

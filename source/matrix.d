@@ -140,6 +140,57 @@ public:
 
 		this.accessToken = resp["access_token"].str;
 		this.user_id = resp["user_id"].str;
+	MatrixDeviceInfo[] getDevices()
+	{
+		string url = buildUrl("devices");
+		JSONValue ret = get(url);
+
+		MatrixDeviceInfo[] inf;
+		foreach (d; ret["devices"].array)
+		{
+			MatrixDeviceInfo i = new MatrixDeviceInfo();
+			i.deviceId = d["device_id"].str;
+			if (!d["display_name"].isNull)
+				i.displayName = d["display_name"].str;
+			if (!d["last_seen_ip"].isNull)
+				i.lastSeenIP = d["last_seen_ip"].str;
+			if (!d["last_seen_ts"].isNull)
+				i.lastSeen = d["last_seen_ts"].integer;
+
+			inf ~= i;
+		}
+
+		return inf;
+	}
+
+	MatrixDeviceInfo getDeviceInfo(string device_id)
+	{
+		string url = buildUrl("devices/%s".format(device_id));
+		JSONValue ret = get(url);
+
+		MatrixDeviceInfo i = new MatrixDeviceInfo();
+		i.deviceId = ret["device_id"].str;
+		if (!ret["display_name"].isNull)
+			i.displayName = ret["display_name"].str;
+		if (!ret["last_seen_ip"].isNull)
+			i.lastSeenIP = ret["last_seen_ip"].str;
+		if (!ret["last_seen_ts"].isNull)
+			i.lastSeen = ret["last_seen_ts"].integer;
+
+		return i;
+	}
+
+	void setDeviceName(string name, string device_id = null)
+	{
+		if (!device_id)
+			device_id = deviceId;
+
+		string url = buildUrl("devices/%s".format(device_id));
+
+		JSONValue req = JSONValue();
+		req["display_name"] = name;
+
+		put(url, req);
 	}
 
 	string[] getJoinedRooms()
