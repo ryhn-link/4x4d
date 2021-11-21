@@ -480,6 +480,14 @@ class MatrixTextMessage : MatrixMessage
 {
 	string content, format, formattedContent;
 }
+
+class MatrixDeviceInfo
+{
+	string deviceId, displayName, lastSeenIP;
+	// I have no idea how to convert UNIX timestamps to DateTime
+	long lastSeen;
+}
+
 class MatrixPresence
 {
 	bool currentlyActive;
