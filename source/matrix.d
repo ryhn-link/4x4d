@@ -272,67 +272,73 @@ public:
 						{
 							foreach (ev; rooms["join"][roomId]["timeline"]["events"].array)
 							{
+								MatrixEvent e;
 								switch (ev["type"].str)
 								{
 									// New message
 								case "m.room.message":
-									auto content = ev["content"];
+									JSONValue content = ev["content"];
 									if (!("msgtype" in content))
 										break;
 									string msgtype = ev["content"]["msgtype"].str;
+									MatrixMessage msg;
 									switch (msgtype)
 									{
 									case "m.text":
 									case "m.notice":
-										if (messageDelegate)
-										{
-											MatrixTextMessage text = new MatrixTextMessage();
+									case "m.emote":
+										MatrixTextMessage text = new MatrixTextMessage();
 
-											text.roomId = roomId;
-											text.type = msgtype;
-											text.age = ev["unsigned"]["age"].integer;
-											text.author = ev["sender"].str;
-											text.eventId = ev["event_id"].str;
+										if ("body" in content)
+											text.content = content["body"].str;
+										if ("format" in content)
+											text.format = content["format"].str;
+										if ("formatted_body" in content)
+											text.formattedContent
+												= content["formatted_body"].str;
 
-											if ("body" in content)
-												text.content = content["body"].str;
-											if ("format" in content)
-												text.format = content["format"].str;
-											if ("formatted_body" in content)
-												text.formattedContent
-													= content["formatted_body"].str;
-
-											messageDelegate(text);
-										}
+										msg = text;
 										break;
-
-										// TODO
+									// TODO
 									default:
 									case "m.file":
 									case "m.image":
 									case "m.audio":
 									case "m.video":
-										if (messageDelegate)
-										{
-											MatrixMessage msg = new MatrixMessage();
-
-											msg.roomId = roomId;
-											msg.type = msgtype;
-											msg.age = ev["unsigned"]["age"].integer;
-											msg.author = ev["sender"].str;
-											msg.eventId = ev["event_id"].str;
-
-											messageDelegate(msg);
-										}
+									case "m.location":
+										msg = new MatrixMessage();
+										break;
 									}
+									msg.msgtype = msgtype;
+									e = msg;
+									break;
 
+								case "m.reaction":
+									MatrixReaction r = new MatrixReaction();
+
+									JSONValue relatesTo = ev["content"]["m.relates_to"];
+									r.emoji = relatesTo["key"].str;
+									r.relatesToEvent = relatesTo["event_id"].str;
+									r.relType = relatesTo["rel_type"].str;
+									e = r;
 									break;
-									// Membership change
-								case "m.room.member":
-									break;
+
+									// Unknown events
 								default:
+								case "m.room.member":
+									e = new MatrixEvent();
 									break;
 								}
+								/// Common event properties
+
+								e.type = ev["type"].str;
+								e.roomId = roomId;
+								e.age = ev["unsigned"]["age"].integer;
+								e.sender = ev["sender"].str;
+								e.eventId = ev["event_id"].str;
+
+								if(eventDelegate)
+									eventDelegate(e);
 							}
 						}
 					}
@@ -354,10 +360,10 @@ public:
 	}
 
 	/// Called when a new message is received
-	void delegate(MatrixMessage) messageDelegate;
+	void delegate(MatrixEvent) eventDelegate;
 	/// Called when a new invite is received
 	void delegate(string, string) inviteDelegate;
-	
+
 	/// Sends a m.room.message with format of org.matrix.custom.html
 	/// fallback is the plain text version of html if the client doesn't support html
 	void sendHTML(string roomId, string html, string fallback = null)
@@ -430,6 +436,22 @@ public:
 		return resp["content_uri"].str;
 	}
 
+	void addReaction(string room_id, string event_id, string emoji)
+	{
+		string url = buildUrl("rooms/%s/send/m.reaction/%d".format(translateRoomId(room_id),
+				transactionId));
+
+		JSONValue req = JSONValue();
+		req["m.relates_to"] = JSONValue();
+		req["m.relates_to"]["rel_type"] = "m.annotation";
+		req["m.relates_to"]["event_id"] = event_id;
+		req["m.relates_to"]["key"] = emoji;
+
+		put(url, req);
+
+		transactionId++;
+	}
+
 	/// Resolves the room alias to a room id, no authentication required
 	string resolveRoomAlias(string roomalias)
 	{
@@ -451,7 +473,7 @@ public:
 		req["presence"] = presence;
 		if (status_msg)
 			req["status_msg"] = status_msg;
-		else 
+		else
 			req["status_msg"] = "";
 
 		put(url, req);
@@ -539,10 +561,20 @@ class MatrixException : Exception
 	}
 }
 
-class MatrixMessage
+class MatrixEvent
 {
-	string author, type, roomId, eventId;
+	string sender, roomId, eventId, type;
 	long age;
+}
+
+class MatrixReaction : MatrixEvent
+{
+	string relType, relatesToEvent, emoji;
+}
+
+class MatrixMessage : MatrixEvent
+{
+	string msgtype;
 }
 
 class MatrixTextMessage : MatrixMessage
