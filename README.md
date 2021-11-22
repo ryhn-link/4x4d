@@ -9,6 +9,7 @@ This library doesn't have any support for commands out of the box, you need to i
 - [x] Sync  
 	- [x] Receiving invites  
 	- [X] Receiving messages (Text messages only for now)
+	- [x] Reactions 
 - [ ] Filters  
 - [x] Joining rooms  
 - [x] Mark messages as read  
