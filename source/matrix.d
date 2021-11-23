@@ -289,8 +289,6 @@ public:
 									case "m.emote":
 										MatrixTextMessage text = new MatrixTextMessage();
 
-										if ("body" in content)
-											text.content = content["body"].str;
 										if ("format" in content)
 											text.format = content["format"].str;
 										if ("formatted_body" in content)
@@ -309,7 +307,10 @@ public:
 										msg = new MatrixMessage();
 										break;
 									}
+
 									msg.msgtype = msgtype;
+									if ("body" in content)
+											msg.content = content["body"].str;
 									e = msg;
 									break;
 
@@ -574,12 +575,12 @@ class MatrixReaction : MatrixEvent
 
 class MatrixMessage : MatrixEvent
 {
-	string msgtype;
+	string msgtype, content;
 }
 
 class MatrixTextMessage : MatrixMessage
 {
-	string content, format, formattedContent;
+	string format, formattedContent;
 }
 
 class MatrixDeviceInfo
