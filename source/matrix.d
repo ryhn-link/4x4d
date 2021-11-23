@@ -121,6 +121,7 @@ public:
 	{
 		return useNotice ? "m.notice" : "m.text";
 	}
+	bool keepJSONEventReference = false;
 
 	this(string homeserver = "https://matrix.org")
 	{
@@ -337,6 +338,9 @@ public:
 								e.age = ev["unsigned"]["age"].integer;
 								e.sender = ev["sender"].str;
 								e.eventId = ev["event_id"].str;
+
+								if(keepJSONEventReference)
+									e.json = ev;
 
 								if(eventDelegate)
 									eventDelegate(e);
@@ -566,6 +570,7 @@ class MatrixEvent
 {
 	string sender, roomId, eventId, type;
 	long age;
+	JSONValue json;
 }
 
 class MatrixReaction : MatrixEvent
