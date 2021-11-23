@@ -115,12 +115,6 @@ public:
 	}
 
 	string homeserver, userId, accessToken, deviceId;
-	bool useNotice = true;
-
-	string getTextMessageType()
-	{
-		return useNotice ? "m.notice" : "m.text";
-	}
 	bool keepJSONEventReference = false;
 
 	this(string homeserver = "https://matrix.org")
@@ -371,7 +365,7 @@ public:
 
 	/// Sends a m.room.message with format of org.matrix.custom.html
 	/// fallback is the plain text version of html if the client doesn't support html
-	void sendHTML(string roomId, string html, string fallback = null)
+	void sendHTML(string roomId, string html, string fallback = null, string msgtype = "m.notice")
 	{
 		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(roomId),
 				transactionId));
@@ -379,7 +373,7 @@ public:
 		if (!fallback)
 			fallback = html;
 		JSONValue req = JSONValue();
-		req["msgtype"] = getTextMessageType();
+		req["msgtype"] = msgtype;
 		req["format"] = "org.matrix.custom.html";
 		req["formatted_body"] = html;
 		req["body"] = fallback;
@@ -390,13 +384,13 @@ public:
 	}
 
 	/// Sends a m.room.message
-	void sendString(string roomId, string text)
+	void sendString(string roomId, string text, string msgtype = "m.notice")
 	{
 		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(roomId),
 				transactionId));
 
 		JSONValue req = JSONValue();
-		req["msgtype"] = getTextMessageType();
+		req["msgtype"] = msgtype;
 		req["body"] = text;
 
 		put(url, req);

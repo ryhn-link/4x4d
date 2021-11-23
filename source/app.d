@@ -18,13 +18,7 @@ void main()
 
 	writeln("Logged in as " ~ mx.userId);
 
-	mx.sync();
-
-	mx.eventDelegate = (&onEvent).toDelegate;
-	while(1)
-	{
-		mx.sync();
-	}
+	mx.sendString(mx.resolveRoomAlias("#testing:ryhn.link"), "confetti!", "nic.custom.confetti");
 }
 
 void onEvent(MatrixEvent e)
