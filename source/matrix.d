@@ -500,6 +500,32 @@ public:
 		transactionId++;
 	}
 
+	string createRoom(MatrixRoomPresetEnum preset = MatrixRoomPresetEnum.private_chat,
+		bool showInDirectory = false, string roomAlias = null, string name = null,
+		bool is_direct = false, string[] inviteUsers = [])
+	{
+		string url = buildUrl("createRoom");
+
+		JSONValue req = JSONValue();
+
+		req["preset"] = preset;
+		req["visibility"] = showInDirectory ? "public" : "private";
+
+		if (name)
+			req["name"] = name;
+		if (roomAlias)
+			req["room_alias_name"] = roomAlias;
+
+		req["is_direct"] = is_direct;
+		req["invite"] = inviteUsers;
+
+		JSONValue res = post(url, req);
+		import std.stdio;
+
+		writeln(res);
+		return res["room_id"].str;
+	}
+
 	/// Resolves the room alias to a room id, no authentication required
 	string resolveRoomAlias(string roomalias)
 	{
