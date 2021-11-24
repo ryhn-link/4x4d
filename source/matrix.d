@@ -70,6 +70,8 @@ public:
 		}
 		else static if (method == "DELETE")
 			http.method(HTTP.Method.del);
+		else static if (method == "OPTIONS")
+			http.method(HTTP.Method.options);
 
 		//import std.stdio;
 		//writeln(method ~ " " ~ url);
@@ -112,6 +114,11 @@ public:
 		import std.net.curl : cput = put;
 
 		return parseJSON(cput(url, data.toString()));
+	}
+
+	JSONValue options(string url, JSONValue data = JSONValue())
+	{
+		return makeHttpRequest!("OPTIONS")(url, data);
 	}
 
 	string homeserver, userId, accessToken, deviceId;
@@ -341,7 +348,7 @@ public:
 
 										msg = text;
 										break;
-									// TODO
+										// TODO
 									default:
 									case "m.file":
 									case "m.image":
@@ -354,7 +361,7 @@ public:
 
 									msg.msgtype = msgtype;
 									if ("body" in content)
-											msg.content = content["body"].str;
+										msg.content = content["body"].str;
 									e = msg;
 									break;
 
@@ -382,10 +389,10 @@ public:
 								e.sender = ev["sender"].str;
 								e.eventId = ev["event_id"].str;
 
-								if(keepJSONEventReference)
+								if (keepJSONEventReference)
 									e.json = ev;
 
-								if(eventDelegate)
+								if (eventDelegate)
 									eventDelegate(e);
 							}
 						}
