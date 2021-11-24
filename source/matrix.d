@@ -122,7 +122,8 @@ public:
 	}
 
 	string homeserver, userId, accessToken, deviceId;
-	bool keepJSONEventReference = false;
+	/// Should sync() keep the JSONValue reference 
+	bool syncKeepJSONEventReference = false;
 
 	this(string homeserver = "https://matrix.org")
 	{
@@ -323,75 +324,7 @@ public:
 						{
 							foreach (ev; rooms["join"][roomId]["timeline"]["events"].array)
 							{
-								MatrixEvent e;
-								switch (ev["type"].str)
-								{
-									// New message
-								case "m.room.message":
-									JSONValue content = ev["content"];
-									if (!("msgtype" in content))
-										break;
-									string msgtype = ev["content"]["msgtype"].str;
-									MatrixMessage msg;
-									switch (msgtype)
-									{
-									case "m.text":
-									case "m.notice":
-									case "m.emote":
-										MatrixTextMessage text = new MatrixTextMessage();
-
-										if ("format" in content)
-											text.format = content["format"].str;
-										if ("formatted_body" in content)
-											text.formattedContent
-												= content["formatted_body"].str;
-
-										msg = text;
-										break;
-										// TODO
-									default:
-									case "m.file":
-									case "m.image":
-									case "m.audio":
-									case "m.video":
-									case "m.location":
-										msg = new MatrixMessage();
-										break;
-									}
-
-									msg.msgtype = msgtype;
-									if ("body" in content)
-										msg.content = content["body"].str;
-									e = msg;
-									break;
-
-								case "m.reaction":
-									MatrixReaction r = new MatrixReaction();
-
-									JSONValue relatesTo = ev["content"]["m.relates_to"];
-									r.emoji = relatesTo["key"].str;
-									r.relatesToEvent = relatesTo["event_id"].str;
-									r.relType = relatesTo["rel_type"].str;
-									e = r;
-									break;
-
-									// Unknown events
-								default:
-								case "m.room.member":
-									e = new MatrixEvent();
-									break;
-								}
-								/// Common event properties
-
-								e.type = ev["type"].str;
-								e.roomId = roomId;
-								e.age = ev["unsigned"]["age"].integer;
-								e.sender = ev["sender"].str;
-								e.eventId = ev["event_id"].str;
-
-								if (keepJSONEventReference)
-									e.json = ev;
-
+								MatrixEvent e = parseEvent(ev, syncKeepJSONEventReference);
 								if (eventDelegate)
 									eventDelegate(e);
 							}
@@ -402,6 +335,83 @@ public:
 		}
 	}
 
+	/// Parses an event from a JSONValue, use casting or the type field to determine it's type. 
+	/// keepJSONReference determines if the JSONValue should be kept in the MatrixEvent object. 
+	/// You can override this function in your program if you need support for more event types. 
+	MatrixEvent parseEvent(JSONValue ev, bool keepJSONReference = false)
+	{
+		MatrixEvent e;
+
+		switch (ev["type"].str)
+		{
+			// New message
+		case "m.room.message":
+			JSONValue content = ev["content"];
+			if (!("msgtype" in content))
+				break;
+			string msgtype = ev["content"]["msgtype"].str;
+			MatrixMessage msg;
+			switch (msgtype)
+			{
+			case "m.text":
+			case "m.notice":
+			case "m.emote":
+				MatrixTextMessage text = new MatrixTextMessage();
+
+				if ("format" in content)
+					text.format = content["format"].str;
+				if ("formatted_body" in content)
+					text.formattedContent
+						= content["formatted_body"].str;
+
+				msg = text;
+				break;
+				// TODO
+			default:
+			case "m.file":
+			case "m.image":
+			case "m.audio":
+			case "m.video":
+			case "m.location":
+				msg = new MatrixMessage();
+				break;
+			}
+
+			msg.msgtype = msgtype;
+			if ("body" in content)
+				msg.content = content["body"].str;
+			e = msg;
+			break;
+
+		case "m.reaction":
+			MatrixReaction r = new MatrixReaction();
+
+			JSONValue relatesTo = ev["content"]["m.relates_to"];
+			r.emoji = relatesTo["key"].str;
+			r.relatesToEvent = relatesTo["event_id"].str;
+			r.relType = relatesTo["rel_type"].str;
+			e = r;
+			break;
+
+			// Unknown events
+		default:
+		case "m.room.member":
+			e = new MatrixEvent();
+			break;
+		}
+		/// Common event properties
+
+		e.type = ev["type"].str;
+		e.roomId = ev["room_id"].str;
+		e.age = ev["unsigned"]["age"].integer;
+		e.sender = ev["sender"].str;
+		e.eventId = ev["event_id"].str;
+
+		if (keepJSONReference)
+			e.json = ev;
+
+		return e;
+	}
 	/// Sets the position of the read marker for given room
 	void markRead(string roomId, string eventId)
 	{
