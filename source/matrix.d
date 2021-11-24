@@ -422,7 +422,7 @@ public:
 		req["limit"] = 1;
 
 		JSONValue res = get(url, req);
-		
+
 		return parseEvent(res["event"], keepJSONReference);
 	}
 
@@ -529,6 +529,15 @@ public:
 		put(url, req);
 
 		transactionId++;
+	}
+
+	string[] getRoomMembers(string room_id)
+	{
+		string url = buildUrl("rooms/%s/joined_members".format(translateRoomId(room_id)));
+
+		JSONValue res = get(url);
+
+		return res["joined"].object.keys;
 	}
 
 	string createRoom(MatrixRoomPresetEnum preset = MatrixRoomPresetEnum.private_chat,

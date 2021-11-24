@@ -18,11 +18,7 @@ void main()
 
 	writeln("Logged in as " ~ mx.userId);
 
-	MatrixEvent e = mx.getEvent(mx.resolveRoomAlias("#testing:ryhn.link"), "$MkiF-WKB7xb-46VjdJESW-9AlW0zpHmUO4HpQUD8aZQ");
-	writeln(e.type);
-
-	if(MatrixTextMessage m = cast(MatrixTextMessage) e)
-		writeln(m.content);
+	writeln(mx.getRoomMembers(mx.resolveRoomAlias("#testing:ryhn.link")));
 }
 
 void onEvent(MatrixEvent e)

@@ -11,7 +11,9 @@ This library doesn't have any support for commands out of the box, you need to i
 	- [X] Receiving messages (Text messages only for now)
 	- [x] Reactions 
 - [ ] Filters  
+- [x] Getting events by ID
 - [x] Joining rooms  
+- [x] Getting room members
 - [x] Mark messages as read  
 - [x] Send message  
 - [x] Resolve room aliases
