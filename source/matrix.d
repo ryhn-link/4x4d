@@ -213,6 +213,42 @@ public:
 		put(url, req);
 	}
 
+	/// Deletes devices, uses a password for authentication
+	/// NOTE: This will only work if the homeserver requires ONLY a password authentication
+	void deleteDevicesUsingPassword(string[] devices, string password)
+	{
+		string url = buildUrl("delete_devices");
+
+		string session;
+		JSONValue noauthresp;
+
+		// This is gonna reply with 401 and give us the session
+		try
+		{
+			// Freezes here :/
+			noauthresp = post(url);
+		}
+		catch (MatrixException e)
+		{
+			noauthresp = e.json;
+		}
+
+		session = noauthresp["session"].str;
+
+		JSONValue req = JSONValue();
+		req["auth"] = JSONValue();
+		req["auth"]["session"] = session;
+		req["auth"]["type"] = "m.login.password";
+		req["auth"]["user"] = userId;
+		req["auth"]["identifier"] = JSONValue();
+		req["auth"]["identifier"]["type"] = "m.id.user";
+		req["auth"]["identifier"]["user"] = userId;
+		req["auth"]["password"] = password;
+		req["devices"] = devices;
+
+		post(url, req);
+	}
+
 	/// ditto
 	string[] getJoinedRooms()
 	{

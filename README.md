@@ -18,6 +18,10 @@ This library doesn't have any support for commands out of the box, you need to i
 - [x] Uploading files
 - [x] Send images (Note: on Element Web they fail to load, the img src URL gives 404)
 - [x] Device info
+	- [x] Getting devices
+	- [x] Getting device info
+	- [x] Setting device display name
+	- [x] Deleting devices (Password auth only; Does not work due to a bug in std.net.curl)
 - [x] Presence
 - [x] Storing and getting config data
 - [x] Message reactions (Why is this not in the spec?)
