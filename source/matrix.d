@@ -95,9 +95,9 @@ public:
 		return returnbody;
 	}
 
-	JSONValue get(string url)
+	JSONValue get(string url, JSONValue data = JSONValue())
 	{
-		return makeHttpRequest!("GET")(url);
+		return makeHttpRequest!("GET")(url, data);
 	}
 
 	JSONValue post(string url, JSONValue data = JSONValue())
@@ -412,6 +412,20 @@ public:
 
 		return e;
 	}
+
+	/// Gets an event from a room by it's ID
+	MatrixEvent getEvent(string room_id, string event_id, bool keepJSONReference = false)
+	{
+		string url = buildUrl("rooms/%s/context/%s".format(room_id, event_id));
+
+		JSONValue req = JSONValue();
+		req["limit"] = 1;
+
+		JSONValue res = get(url, req);
+		
+		return parseEvent(res["event"], keepJSONReference);
+	}
+
 	/// Sets the position of the read marker for given room
 	void markRead(string roomId, string eventId)
 	{
