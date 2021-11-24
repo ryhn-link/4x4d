@@ -143,6 +143,19 @@ public:
 		this.deviceId = resp["device_id"].str;
 	}
 
+	/// Log in to the matrix server using an existing access token assigned to a device_id.
+	void tokenLogin(string access_token, string device_id)
+	{
+		this.accessToken = access_token;
+		this.deviceId = device_id;
+
+		string url = buildUrl("account/whoami");
+		JSONValue ret = get(url);
+
+		userId = ret["user_id"].str;
+		deviceId = ret["device_id"].str;
+	}
+
 	/// Get information about all devices for current user
 	MatrixDeviceInfo[] getDevices()
 	{
