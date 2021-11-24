@@ -18,37 +18,11 @@ void main()
 
 	writeln("Logged in as " ~ mx.userId);
 
-	/*
-	MatrixDeviceInfo[] devices = mx.getDevices();
-	string[] deviceIds;
-	foreach(d;devices)
-	{
-		if(d.deviceId == mx.deviceId) continue;
+	MatrixEvent e = mx.getEvent(mx.resolveRoomAlias("#testing:ryhn.link"), "$MkiF-WKB7xb-46VjdJESW-9AlW0zpHmUO4HpQUD8aZQ");
+	writeln(e.type);
 
-		writeln(d.deviceId);
-		deviceIds ~= d.deviceId;
-	}
-
-	writeln();
-	writeln("Deleting...");
-	writeln();
-	
-	mx.deleteDevicesUsingPassword(deviceIds, password);
-
-	devices = mx.getDevices();
-	foreach(d;devices)
-	{
-		writeln(d.deviceId);
-		deviceIds ~= d.deviceId;
-	}
-	*/
-
-	mx.sync();
-	mx.eventDelegate = (&onEvent).toDelegate;
-	while(1)
-	{
-		mx.sync();
-	}
+	if(MatrixTextMessage m = cast(MatrixTextMessage) e)
+		writeln(m.content);
 }
 
 void onEvent(MatrixEvent e)
