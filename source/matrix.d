@@ -576,6 +576,68 @@ public:
 		return p;
 	}
 
+	/// Gets the direct message room for given user. 
+	/// Returns null if the room doesn't exist
+	string getDirectMessageRoom(string user_id)
+	{
+		try
+		{
+			JSONValue result = getAccountData("m.direct");
+			if ("content" in result)
+			{
+				if (user_id in result["content"])
+				{
+					return result["content"][user_id].array.front.str;
+				}
+			}
+		}
+		catch (Exception e)
+		{
+		}
+
+		return null;
+	}
+
+	/// Creates the direct message room and stores it's ID in account data
+	string createDirectMessageRoom(string user_id)
+	{
+		/// Create the room
+		string roomId = createRoom(
+			MatrixRoomPresetEnum.private_chat, false, null, null,
+			true, [user_id]);
+
+		/// Store the room id in the account data
+		JSONValue dat = getAccountData("m.direct");
+		import std.stdio;
+
+		writeln(dat);
+		if ("error" in dat)
+			dat = JSONValue();
+
+		if (dat.isNull)
+		{
+			dat["content"] = JSONValue();
+			dat["content"][user_id] = JSONValue();
+			dat["content"][user_id] = [roomId];
+		}
+		else
+		{
+			if (!(user_id in dat["content"]))
+				dat["content"][user_id] = [roomId];
+			else
+				dat["content"][user_id] ~= roomId;
+		}
+
+		setAccountData("m.direct", dat);
+		return roomId;
+	}
+
+	string getOrCreateDirectMessageRoom(string user_id)
+	{
+		string roomId = getDirectMessageRoom(user_id);
+		return roomId ? roomId : createDirectMessageRoom(user_id);
+	}
+
 	/// Gets custom account data with specified type
 	JSONValue getAccountData(string type)
 	{
@@ -623,8 +685,10 @@ class MatrixException : Exception
 {
 	string errcode, error;
 	int statuscode;
+	JSONValue json;
 	this(int statuscode, JSONValue json)
 	{
+		this.json = json;
 		this.statuscode = statuscode;
 		if ("errcode" in json)
 			errcode = json["errcode"].str;
@@ -670,6 +734,13 @@ class MatrixPresence
 	long lastActiveAgo;
 	MatrixPresenceEnum presence;
 	string statusMessage;
+}
+
+enum MatrixRoomPresetEnum : string
+{
+	private_chat = "private_chat",
+	public_chat = "public_chat",
+	trusted_private_chat = "trusted_private_chat"
 }
 
 enum MatrixPresenceEnum : string
