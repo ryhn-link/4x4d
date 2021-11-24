@@ -25,8 +25,9 @@ This library doesn't have any support for commands out of the box, you need to i
 - [x] Presence
 - [x] Storing and getting config data
 - [x] Message reactions (Why is this not in the spec?)
-- [ ] Direct messages
 - [x] Creating rooms
+- [x] Direct messages
+- [x] Caching data from /sync
 - [ ] E2E encryption???  
 
 ## License
