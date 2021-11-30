@@ -324,7 +324,7 @@ public:
 						{
 							foreach (ev; rooms["join"][roomId]["timeline"]["events"].array)
 							{
-								MatrixEvent e = parseEvent(ev, syncKeepJSONEventReference);
+								MatrixEvent e = parseEvent(ev, syncKeepJSONEventReference, roomId);
 								if (eventDelegate)
 									eventDelegate(e);
 							}
@@ -338,7 +338,7 @@ public:
 	/// Parses an event from a JSONValue, use casting or the type field to determine it's type. 
 	/// keepJSONReference determines if the JSONValue should be kept in the MatrixEvent object. 
 	/// You can override this function in your program if you need support for more event types. 
-	MatrixEvent parseEvent(JSONValue ev, bool keepJSONReference = false)
+	MatrixEvent parseEvent(JSONValue ev, bool keepJSONReference = false, string optRoomId = null)
 	{
 		MatrixEvent e;
 
@@ -402,7 +402,10 @@ public:
 		/// Common event properties
 
 		e.type = ev["type"].str;
-		e.roomId = ev["room_id"].str;
+		if("room_id" in ev)
+			e.roomId = ev["room_id"].str;
+		else if(optRoomId) e.roomId = optRoomId;
+
 		e.age = ev["unsigned"]["age"].integer;
 		e.sender = ev["sender"].str;
 		e.eventId = ev["event_id"].str;
@@ -423,7 +426,7 @@ public:
 
 		JSONValue res = get(url, req);
 
-		return parseEvent(res["event"], keepJSONReference);
+		return parseEvent(res["event"], keepJSONReference, room_id);
 	}
 
 	/// Sets the position of the read marker for given room
