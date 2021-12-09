@@ -402,9 +402,10 @@ public:
 		/// Common event properties
 
 		e.type = ev["type"].str;
-		if("room_id" in ev)
+		if ("room_id" in ev)
 			e.roomId = ev["room_id"].str;
-		else if(optRoomId) e.roomId = optRoomId;
+		else if (optRoomId)
+			e.roomId = optRoomId;
 
 		e.age = ev["unsigned"]["age"].integer;
 		e.sender = ev["sender"].str;
@@ -518,6 +519,79 @@ public:
 		return resp["content_uri"].str;
 	}
 
+	void[] downloadFile(string mxc, string mimeType = "*/*,*")
+	{
+		if (!mxc.toLower.startsWith("mxc://"))
+			throw new Exception("URI does not start with 'mxc://'");
+
+		mxc = mxc["mxc://".length .. $];
+
+		auto split = mxc.split('/');
+
+		return downloadFile(split[0], split[1], null, mimeType);
+	}
+
+	void[] downloadFile(string server, string id, string filename = null, string mimeType = "*/*,*",
+		bool allowRemote = true)
+	{
+		string url;
+		if (filename)
+			url = buildUrl("download/%s/%s/%s".format(server, id, filename), [
+					"allow_remote": allowRemote.to!string
+				], "r0", "media");
+		else
+			url = buildUrl("download/%s/%s".format(server, id), [
+					"allow_remote": allowRemote.to!string
+				], "r0", "media");
+
+		auto http = HTTP(url);
+		http.method(HTTP.Method.get);
+		http.addRequestHeader("Accept", mimeType);
+		void[] ret;
+		http.onReceive = (ubyte[] data) { ret ~= data; return data.length; };
+		http.perform();
+
+		return ret;
+	}
+
+	void[] downloadThumbnail(string mxc, int w = 640, int h = 480,
+		MatrixResizeMethod method = MatrixResizeMethod.crop, string mimeType = "*/*,*")
+	{
+		if (!mxc.toLower.startsWith("mxc://"))
+			throw new Exception("URI does not start with 'mxc://'");
+
+		mxc = mxc["mxc://".length .. $];
+
+		auto split = mxc.split('/');
+
+		return downloadThumbnail(split[0], split[1], w, h, method, mimeType);
+	}
+
+	void[] downloadThumbnail(string server, string id, int w = 640, int h = 480,
+		MatrixResizeMethod method = MatrixResizeMethod.crop, string mimeType = "*/*,*", bool allowRemote = true)
+	{
+		string url = buildUrl("thumbnail/%s/%s".format(server, id),
+			[
+				"allow_remote": allowRemote.to!string,
+				"width": w.to!string,
+				"height": h.to!string,
+				"method": method
+			], "r0", "media");
+
+		import std.stdio;
+
+		writeln(url);
+
+		auto http = HTTP(url);
+		http.method(HTTP.Method.get);
+		http.addRequestHeader("Accept", mimeType);
+		void[] ret;
+		http.onReceive = (ubyte[] data) { ret ~= data; return data.length; };
+		http.perform();
+
+		return ret;
+	}
+
 	void addReaction(string room_id, string event_id, string emoji)
 	{
 		string url = buildUrl("rooms/%s/send/m.reaction/%d".format(translateRoomId(room_id),
@@ -548,13 +622,13 @@ public:
 		string url = buildUrl("profile/" ~ user_id);
 
 		JSONValue res = get(url);
-		
+
 		MatrixProfile p = new MatrixProfile();
 
-		if("avatar_url" in res)
+		if ("avatar_url" in res)
 			p.avatarUrl = res["avatar_url"].str;
 
-		if("displayname" in res)
+		if ("displayname" in res)
 			p.displayName = res["displayname"].str;
 
 		return p;
@@ -813,4 +887,10 @@ enum MatrixPresenceEnum : string
 class MatrixProfile
 {
 	string displayName, avatarUrl;
+}
+
+enum MatrixResizeMethod
+{
+	crop = "crop",
+	scale = "scale"
 }

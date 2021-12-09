@@ -21,6 +21,10 @@ void main()
 	auto p = mx.getProfile("@ryhon:ryhn.link");
 	writeln(p.displayName);
 	writeln(p.avatarUrl);
+
+	import std.file;
+	write("avatar.png",mx.downloadFile(p.avatarUrl));
+	write("avatar_thumb.png",mx.downloadThumbnail(p.avatarUrl, 32,32, MatrixResizeMethod.crop, "image/png"));
 }
 
 void onEvent(MatrixEvent e)
