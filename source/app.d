@@ -13,12 +13,14 @@ void main()
 {
 	mx = new MatrixClient("https://ryhn.link");
 
-	mx.login("rbot", environment["PASSWORD"]);
+	string password = environment["PASSWORD"];
 	mx.passwordLogin("rbot", password, "rbot");
 
 	writeln("Logged in as " ~ mx.userId);
 
-	writeln(mx.getRoomMembers(mx.resolveRoomAlias("#testing:ryhn.link")));
+	auto p = mx.getProfile("@ryhon:ryhn.link");
+	writeln(p.displayName);
+	writeln(p.avatarUrl);
 }
 
 void onEvent(MatrixEvent e)

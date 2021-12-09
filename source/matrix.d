@@ -543,6 +543,23 @@ public:
 		return res["joined"].object.keys;
 	}
 
+	MatrixProfile getProfile(string user_id)
+	{
+		string url = buildUrl("profile/" ~ user_id);
+
+		JSONValue res = get(url);
+		
+		MatrixProfile p = new MatrixProfile();
+
+		if("avatar_url" in res)
+			p.avatarUrl = res["avatar_url"].str;
+
+		if("displayname" in res)
+			p.displayName = res["displayname"].str;
+
+		return p;
+	}
+
 	string createRoom(MatrixRoomPresetEnum preset = MatrixRoomPresetEnum.private_chat,
 		bool showInDirectory = false, string roomAlias = null, string name = null,
 		bool is_direct = false, string[] inviteUsers = [])
@@ -791,4 +808,9 @@ enum MatrixPresenceEnum : string
 	online = "online",
 	offline = "offline",
 	unavailable = "unavailable"
+}
+
+class MatrixProfile
+{
+	string displayName, avatarUrl;
 }
