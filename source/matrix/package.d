@@ -390,7 +390,7 @@ public:
 	EventID sendEvent(T)(T room, string eventType, JSONValue json)
 			if (isSomeRoomID!(T))
 	{
-		string url = buildUrl("rooms/%s/send/%s/%d".format(c.translateRoomId(room), eventType, transactionId));
+		string url = buildUrl("rooms/%s/send/%s/%d".format(translateRoomId(room), eventType, transactionId));
 
 		JSONValue ret = put(url, json);
 		transactionId++;
@@ -545,9 +545,9 @@ public:
 	{
 		string url;
 		if (stateKey)
-			url = buildUrl("rooms/%s/state/%s/%s".format(c.translateRoomId(room), eventType, stateKey));
+			url = buildUrl("rooms/%s/state/%s/%s".format(translateRoomId(room), eventType, stateKey));
 		else
-			url = buildUrl("rooms/%s/state/%s".format(c.translateRoomId(room), eventType));
+			url = buildUrl("rooms/%s/state/%s".format(translateRoomId(room), eventType));
 
 		JSONValue resp = get(url);
 
@@ -556,7 +556,7 @@ public:
 
 	JSONValue getRoomStates(T)(T room) if (isSomeRoomID!T)
 	{
-		string url = buildUrl("rooms/%s/state".format(c.translateRoomId(room)));
+		string url = buildUrl("rooms/%s/state".format(translateRoomId(room)));
 
 		JSONValue resp = get(url);
 
@@ -568,9 +568,9 @@ public:
 	{
 		string url;
 		if (stateKey)
-			url = buildUrl("rooms/%s/state/%s/%s".format(c.translateRoomId(room), eventType, stateKey));
+			url = buildUrl("rooms/%s/state/%s/%s".format(translateRoomId(room), eventType, stateKey));
 		else
-			url = buildUrl("rooms/%s/state/%s".format(c.translateRoomId(room), eventType));
+			url = buildUrl("rooms/%s/state/%s".format(translateRoomId(room), eventType));
 		post(url, json);
 	}
 }

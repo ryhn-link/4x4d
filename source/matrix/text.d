@@ -7,7 +7,7 @@ import std.json;
 
 /// Sends a m.room.message with format of org.matrix.custom.html
 /// fallback is the plain text version of html if the client doesn't support html
-void sendHTML(T)(MatrixClient c, T room, string html, string fallback = null, string msgtype = "m.notice")
+EventID sendHTML(T)(MatrixClient c, T room, string html, string fallback = null, string msgtype = "m.notice")
 		if (isSomeRoomID!T)
 {
 	if (!fallback)
@@ -22,7 +22,7 @@ void sendHTML(T)(MatrixClient c, T room, string html, string fallback = null, st
 }
 
 /// Sends a m.room.message
-void sendString(T)(MatrixClient c, T room, string text, string msgtype = "m.notice")
+EventID sendString(T)(MatrixClient c, T room, string text, string msgtype = "m.notice")
 		if (isSomeRoomID!T)
 {
 	JSONValue json = JSONValue();
@@ -33,7 +33,7 @@ void sendString(T)(MatrixClient c, T room, string text, string msgtype = "m.noti
 }
 
 /// Sends a m.room.message with specified msgtype and MXC URI
-void sendFile(T)(T room, string filename, MXC mxc, string msgtype = "m.file")
+EventID sendFile(T)(T room, string filename, MXC mxc, string msgtype = "m.file")
 		if (isSomeRoomID!T)
 {
 	JSONValue json = JSONValue();
@@ -45,13 +45,13 @@ void sendFile(T)(T room, string filename, MXC mxc, string msgtype = "m.file")
 }
 
 /// Sends a m.room.message with type of m.image with specified MXC URI
-void sendImage(T)(MatrixClient c, T room, string filename, MXC mxc)
+EventID sendImage(T)(MatrixClient c, T room, string filename, MXC mxc)
 		if (isSomeRoomID!T)
 {
 	return c.sendFile(room, "m.image", filename, mxc);
 }
 
-void addReaction(T)(MatrixClient c, T room, EventID event, string emoji)
+EventID addReaction(T)(MatrixClient c, T room, EventID event, string emoji)
 		if (isSomeRoomID!T)
 {
 	JSONValue json = JSONValue();
