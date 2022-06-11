@@ -387,6 +387,20 @@ public:
 		return EventID(ret["event_id"].str);
 	}
 
+	EventID redactEvent(T)(T room, EventID event, string reason = null)
+	{
+		string url = buildUrl("rooms/%s/redact/%s/%d".format(translateRoomId(room), event, transactionId));
+
+		JSONValue json = JSONValue();
+		if(reason)
+			json["reason"] = reason;
+
+		JSONValue ret = put(url, json);
+		transactionId++;
+
+		return EventID(ret["event_id"].str);
+	}
+
 	string[] getRoomMembers(string room_id)
 	{
 		string url = buildUrl("rooms/%s/joined_members".format(translateRoomId(room_id)));
