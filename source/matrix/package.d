@@ -306,6 +306,9 @@ public:
 				r.reason = ev["content"]["reason"].str;
 			e = r;
 			break;
+		
+		default:
+			break;
 		}
 
 		/// Common event properties
@@ -342,13 +345,13 @@ public:
 	}
 
 	/// Sets the position of the read marker for given room
-	void markRead(string roomId, string eventId)
+	void markRead(T)(T room, EventID eventId) if(isSomeRoom!T)
 	{
 		string url = buildUrl("rooms/%s/read_markers".format(translateRoomId(roomId)));
 
 		JSONValue req = JSONValue();
-		req["m.fully_read"] = eventId;
-		req["m.read"] = eventId;
+		req["m.fully_read"] = eventId.toString;
+		req["m.read"] = eventId.toString;
 
 		post(url, req);
 	}
