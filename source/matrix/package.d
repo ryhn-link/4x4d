@@ -12,11 +12,15 @@ public import matrix.cif;
 
 class MatrixClient
 {
+	string homeserver, accessToken, deviceId;
+	UserID userId;
+
+	uint transactionId;
+	string nextBatch;
+
 private:
 	static const string[string] NULL_PARAMS;
 public:
-	uint transactionId;
-	string nextBatch;
 
 	string buildUrl(string endpoint, const string[string] params = NULL_PARAMS,
 		string apiVersion = "unstable", string section = "client", bool auth = true)
@@ -125,7 +129,6 @@ public:
 		return makeHttpRequest!("OPTIONS")(url, data);
 	}
 
-	string homeserver, userId, accessToken, deviceId;
 	/// Should sync() keep the JSONValue reference 
 	bool syncKeepJSONEventReference = false;
 
