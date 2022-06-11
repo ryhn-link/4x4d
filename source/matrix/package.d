@@ -650,68 +650,6 @@ public:
 		return p;
 	}
 
-	/// Gets the direct message room for given user. 
-	/// Returns null if the room doesn't exist
-	string getDirectMessageRoom(string user_id)
-	{
-		try
-		{
-			JSONValue result = getAccountData("m.direct");
-			if ("content" in result)
-			{
-				if (user_id in result["content"])
-				{
-					return result["content"][user_id].array.front.str;
-				}
-			}
-		}
-		catch (Exception e)
-		{
-		}
-
-		return null;
-	}
-
-	/// Creates the direct message room and stores it's ID in account data
-	RoomID createDirectMessageRoom(string user_id)
-	{
-		/// Create the room
-		RoomID room = createRoom(
-			MatrixRoomPresetEnum.private_chat, false, null, null,
-			true, [user_id]);
-
-		/// Store the room id in the account data
-		JSONValue dat = getAccountData("m.direct");
-		import std.stdio;
-
-		writeln(dat);
-		if ("error" in dat)
-			dat = JSONValue();
-
-		if (dat.isNull)
-		{
-			dat["content"] = JSONValue();
-			dat["content"][user_id] = JSONValue();
-			dat["content"][user_id] = [room.toString];
-		}
-		else
-		{
-			if (!(user_id in dat["content"]))
-				dat["content"][user_id] = [room.toString];
-			else
-				dat["content"][user_id] ~= room.toString;
-		}
-
-		setAccountData("m.direct", dat);
-		return room;
-	}
-
-	RoomID getOrCreateDirectMessageRoom(string user_id)
-	{
-		RoomID roomId = getDirectMessageRoom(user_id);
-		return roomId ? RoomID(roomId) : createDirectMessageRoom(user_id);
-	}
-
 	/// Gets custom account data with specified type
 	JSONValue getAccountData(string type)
 	{
@@ -799,7 +737,6 @@ class MatrixTextMessage : MatrixMessage
 class MatrixDeviceInfo
 {
 	string deviceId, displayName, lastSeenIP;
-	// I have no idea how to convert UNIX timestamps to DateTime
 	long lastSeen;
 }
 
