@@ -539,6 +539,40 @@ public:
 
 		put(url, data);
 	}
+
+	JSONValue getRoomState(T)(T room, string eventType, string stateKey = null)
+			if (isSomeRoomID!T)
+	{
+		string url;
+		if (stateKey)
+			url = buildUrl("rooms/%s/state/%s/%s".format(c.translateRoomId(room), eventType, stateKey));
+		else
+			url = buildUrl("rooms/%s/state/%s".format(c.translateRoomId(room), eventType));
+
+		JSONValue resp = get(url);
+
+		return resp;
+	}
+
+	JSONValue getRoomStates(T)(T room) if (isSomeRoomID!T)
+	{
+		string url = buildUrl("rooms/%s/state".format(c.translateRoomId(room)));
+
+		JSONValue resp = get(url);
+
+		return resp;
+	}
+
+	void setRoomState(T)(T room, JSONValue json, string eventType, string stateKey = null)
+			if (isSomeRoomID!T)
+	{
+		string url;
+		if (stateKey)
+			url = buildUrl("rooms/%s/state/%s/%s".format(c.translateRoomId(room), eventType, stateKey));
+		else
+			url = buildUrl("rooms/%s/state/%s".format(c.translateRoomId(room), eventType));
+		post(url, json);
+	}
 }
 
 class MatrixException : Exception
