@@ -345,7 +345,7 @@ public:
 	}
 
 	/// Sets the position of the read marker for given room
-	void markRead(T)(T room, EventID eventId) if(isSomeRoom!T)
+	void markRead(T)(T room, EventID eventId) if(isSomeRoomID!T)
 	{
 		string url = buildUrl("rooms/%s/read_markers".format(translateRoomId(roomId)));
 
