@@ -179,11 +179,12 @@ public:
 		JSONValue result = get(url);
 
 		import std.algorithm.iteration;
+
 		return result["joined_rooms"].array.map!((JSONValue j) => RoomID(j.str)).array;
 	}
 
 	/// Joins a room by it's room id or alias, retuns it's room id
-	RoomID joinRoom(T)(T room) if(isSomeRoomID!T)
+	RoomID joinRoom(T)(T room) if (isSomeRoomID!T)
 	{
 		// Why the hell are there 2 endpoints that do the *exact* same thing 
 		string url = buildUrl("join/%s".format(translateRoomId(room)));
@@ -218,7 +219,8 @@ public:
 				foreach (inv; invites.object.keys)
 				{
 					if (inviteDelegate)
-						inviteDelegate(RoomID(inv), invites[inv]["invite_state"]["events"][0]["sender"].str);
+						inviteDelegate(RoomID(inv), invites[inv]["invite_state"]["events"][0]["sender"]
+								.str);
 				}
 
 			}
@@ -356,63 +358,6 @@ public:
 	/// Called when a new invite is received
 	void delegate(RoomID, string) inviteDelegate;
 
-	/// Sends a m.room.message with format of org.matrix.custom.html
-	/// fallback is the plain text version of html if the client doesn't support html
-	void sendHTML(T)(T room, string html, string fallback = null, string msgtype = "m.notice") if(isSomeRoomID!T)
-	{
-		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(room),
-				transactionId));
-
-		if (!fallback)
-			fallback = html;
-		JSONValue req = JSONValue();
-		req["msgtype"] = msgtype;
-		req["format"] = "org.matrix.custom.html";
-		req["formatted_body"] = html;
-		req["body"] = fallback;
-
-		put(url, req);
-
-		transactionId++;
-	}
-
-	/// Sends a m.room.message
-	void sendString(T)(T room, string text, string msgtype = "m.notice") if(isSomeRoomID!T)
-	{
-		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(room),
-				transactionId));
-
-		JSONValue req = JSONValue();
-		req["msgtype"] = msgtype;
-		req["body"] = text;
-
-		put(url, req);
-
-		transactionId++;
-	}
-
-	/// Sends a m.room.message with specified msgtype and MXC URI
-	void sendFile(T)(T room, string filename, MXC mxc, string msgtype = "m.file") if(isSomeRoomID!T)
-	{
-		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(room),
-				transactionId));
-
-		JSONValue req = JSONValue();
-		req["msgtype"] = msgtype;
-		req["url"] = mxc;
-		req["body"] = filename;
-
-		put(url, req);
-
-		transactionId++;
-	}
-
-	/// Sends a m.room.message with type of m.image with specified MXC URI
-	void sendImage(T)(T room, string filename, MXC mxc) if(isSomeRoomID!T)
-	{
-		sendFile(room, "m.image", filename, mxc);
-	}
-
 	/// Uploads a file to the server and returns the MXC URI
 	MXC uploadFile(const void[] data, string filename, string mimetype)
 	{
@@ -442,20 +387,15 @@ public:
 		return ret;
 	}
 
-	void addReaction(string room_id, string event_id, string emoji)
+	EventID sendEvent(T)(T room, string eventType, JSONValue json)
+			if (isSomeRoomID!(T))
 	{
-		string url = buildUrl("rooms/%s/send/m.reaction/%d".format(translateRoomId(room_id),
-				transactionId));
+		string url = buildUrl("rooms/%s/send/%s/%d".format(c.translateRoomId(room), eventType, transactionId));
 
-		JSONValue req = JSONValue();
-		req["m.relates_to"] = JSONValue();
-		req["m.relates_to"]["rel_type"] = "m.annotation";
-		req["m.relates_to"]["event_id"] = event_id;
-		req["m.relates_to"]["key"] = emoji;
-
-		put(url, req);
-
+		JSONValue ret = put(url, json);
 		transactionId++;
+
+		return EventID(ret["event_id"].str);
 	}
 
 	string[] getRoomMembers(string room_id)
@@ -580,7 +520,6 @@ public:
 
 	/// Get custom account data with specified type for the given room
 	/// NOTE: Room aliases don't have the same data as their resolved room ids
-	/// NOTE 2: Synapse doesn't seem to validate the room id, so you can put anything in place of it
 	JSONValue getRoomData(string room_id, string type)
 	{
 		string url = buildUrl("user/%s/rooms/%s/account_data/%s".format(userId,
@@ -593,7 +532,6 @@ public:
 
 	/// Set custom account data with specified type for the given room
 	/// NOTE: Room aliases don't have the same data as their resolved room ids
-	/// NOTE 2: Synapse doesn't seem to validate the room id, so you can put anything in place of it
 	void setRoomData(string room_id, string type, JSONValue data)
 	{
 		string url = buildUrl("user/%s/rooms/%s/account_data/%s".format(userId,
