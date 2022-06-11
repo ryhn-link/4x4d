@@ -9,6 +9,7 @@ docs/
 4x4d.a
 4x4d.lib
 4x4d-test-*
+lib4x4d.*
 *.exe
 *.o
 *.obj

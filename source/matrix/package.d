@@ -5,6 +5,10 @@ import std.string;
 import std.net.curl : HTTP, CurlCode, ThrowOnError;
 import std.conv;
 import std.range;
+import std.regex;
+
+public import matrix.mxc;
+public import matrix.cif;
 
 class MatrixClient
 {
@@ -15,12 +19,12 @@ public:
 	string nextBatch;
 
 	string buildUrl(string endpoint, const string[string] params = NULL_PARAMS,
-		string apiVersion = "unstable", string section = "client")
+		string apiVersion = "unstable", string section = "client", bool auth = true)
 	{
 		string url = "%s/_matrix/%s/%s/%s".format(this.homeserver, section, apiVersion, endpoint);
 		char concat = '?';
 
-		if (this.accessToken.length)
+		if (auth && this.accessToken.length)
 		{
 			url ~= "%caccess_token=%s".format(concat, this.accessToken);
 			concat = '&';
@@ -258,29 +262,24 @@ public:
 	}
 
 	/// ditto
-	string[] getJoinedRooms()
+	RoomID[] getJoinedRooms()
 	{
 		string url = buildUrl("joined_rooms");
 
 		JSONValue result = get(url);
 
-		// TODO: Find a better way to do this 💀
-		string[] rooms = [];
-		foreach (r; result["joined_rooms"].array)
-		{
-			rooms ~= r.str;
-		}
-		return rooms;
+		import std.algorithm.iteration;
+		return result["joined_rooms"].array.map!((JSONValue j) => RoomID(j.str)).array;
 	}
 
 	/// Joins a room by it's room id or alias, retuns it's room id
-	string joinRoom(string roomId)
+	RoomID joinRoom(T)(T room) if(isSomeRoomID!T)
 	{
 		// Why the hell are there 2 endpoints that do the *exact* same thing 
-		string url = buildUrl("join/%s".format(translateRoomId(roomId)));
+		string url = buildUrl("join/%s".format(translateRoomId(room)));
 
 		JSONValue ret = post(url);
-		return ret["room_id"].str;
+		return RoomID(ret["room_id"].str);
 	}
 
 	/// Fetch new events
@@ -309,7 +308,7 @@ public:
 				foreach (inv; invites.object.keys)
 				{
 					if (inviteDelegate)
-						inviteDelegate(inv, invites[inv]["invite_state"]["events"][0]["sender"].str);
+						inviteDelegate(RoomID(inv), invites[inv]["invite_state"]["events"][0]["sender"].str);
 				}
 
 			}
@@ -445,13 +444,13 @@ public:
 	/// Called when a new message is received
 	void delegate(MatrixEvent) eventDelegate;
 	/// Called when a new invite is received
-	void delegate(string, string) inviteDelegate;
+	void delegate(RoomID, string) inviteDelegate;
 
 	/// Sends a m.room.message with format of org.matrix.custom.html
 	/// fallback is the plain text version of html if the client doesn't support html
-	void sendHTML(string roomId, string html, string fallback = null, string msgtype = "m.notice")
+	void sendHTML(T)(T room, string html, string fallback = null, string msgtype = "m.notice") if(isSomeRoomID!T)
 	{
-		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(roomId),
+		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(room),
 				transactionId));
 
 		if (!fallback)
@@ -468,9 +467,9 @@ public:
 	}
 
 	/// Sends a m.room.message
-	void sendString(string roomId, string text, string msgtype = "m.notice")
+	void sendString(T)(T room, string text, string msgtype = "m.notice") if(isSomeRoomID!T)
 	{
-		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(roomId),
+		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(room),
 				transactionId));
 
 		JSONValue req = JSONValue();
@@ -483,9 +482,9 @@ public:
 	}
 
 	/// Sends a m.room.message with specified msgtype and MXC URI
-	void sendFile(string roomId, string filename, string mxc, string msgtype = "m.file")
+	void sendFile(T)(T room, string filename, MXC mxc, string msgtype = "m.file") if(isSomeRoomID!T)
 	{
-		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(roomId),
+		string url = buildUrl("rooms/%s/send/m.room.message/%d".format(translateRoomId(room),
 				transactionId));
 
 		JSONValue req = JSONValue();
@@ -499,13 +498,13 @@ public:
 	}
 
 	/// Sends a m.room.message with type of m.image with specified MXC URI
-	void sendImage(string roomId, string filename, string mxc)
+	void sendImage(T)(T room, string filename, MXC mxc) if(isSomeRoomID!T)
 	{
-		sendFile(roomId, "m.image", filename, mxc);
+		sendFile(room, "m.image", filename, mxc);
 	}
 
 	/// Uploads a file to the server and returns the MXC URI
-	string uploadFile(const void[] data, string filename, string mimetype)
+	MXC uploadFile(const void[] data, string filename, string mimetype)
 	{
 		string[string] params = ["filename": filename];
 		string url = buildUrl("upload", params, "r0", "media");
@@ -516,72 +515,13 @@ public:
 		http.addRequestHeader("Content-Type", mimetype);
 		JSONValue resp = makeHttpRequest!("POST")(url, JSONValue(), http);
 
-		return resp["content_uri"].str;
+		return MXC(resp["content_uri"].str);
 	}
 
-	void[] downloadFile(string mxc, string mimeType = "*/*,*")
+	/// Used for downloading HTTP files, see MXC.getDownloadURL and MXC.getThumbnailURL
+	/// to download MXC files 
+	void[] downloadFile(string url, string mimeType = "*/*")
 	{
-		if (!mxc.toLower.startsWith("mxc://"))
-			throw new Exception("URI does not start with 'mxc://'");
-
-		mxc = mxc["mxc://".length .. $];
-
-		auto split = mxc.split('/');
-
-		return downloadFile(split[0], split[1], null, mimeType);
-	}
-
-	void[] downloadFile(string server, string id, string filename = null, string mimeType = "*/*,*",
-		bool allowRemote = true)
-	{
-		string url;
-		if (filename)
-			url = buildUrl("download/%s/%s/%s".format(server, id, filename), [
-					"allow_remote": allowRemote.to!string
-				], "r0", "media");
-		else
-			url = buildUrl("download/%s/%s".format(server, id), [
-					"allow_remote": allowRemote.to!string
-				], "r0", "media");
-
-		auto http = HTTP(url);
-		http.method(HTTP.Method.get);
-		http.addRequestHeader("Accept", mimeType);
-		void[] ret;
-		http.onReceive = (ubyte[] data) { ret ~= data; return data.length; };
-		http.perform();
-
-		return ret;
-	}
-
-	void[] downloadThumbnail(string mxc, int w = 640, int h = 480,
-		MatrixResizeMethod method = MatrixResizeMethod.crop, string mimeType = "*/*,*")
-	{
-		if (!mxc.toLower.startsWith("mxc://"))
-			throw new Exception("URI does not start with 'mxc://'");
-
-		mxc = mxc["mxc://".length .. $];
-
-		auto split = mxc.split('/');
-
-		return downloadThumbnail(split[0], split[1], w, h, method, mimeType);
-	}
-
-	void[] downloadThumbnail(string server, string id, int w = 640, int h = 480,
-		MatrixResizeMethod method = MatrixResizeMethod.crop, string mimeType = "*/*,*", bool allowRemote = true)
-	{
-		string url = buildUrl("thumbnail/%s/%s".format(server, id),
-			[
-				"allow_remote": allowRemote.to!string,
-				"width": w.to!string,
-				"height": h.to!string,
-				"method": method
-			], "r0", "media");
-
-		import std.stdio;
-
-		writeln(url);
-
 		auto http = HTTP(url);
 		http.method(HTTP.Method.get);
 		http.addRequestHeader("Accept", mimeType);
@@ -617,7 +557,7 @@ public:
 		return res["joined"].object.keys;
 	}
 
-	MatrixProfile getProfile(string user_id)
+	MatrixProfile getProfile(UserID user_id)
 	{
 		string url = buildUrl("profile/" ~ user_id);
 
@@ -626,7 +566,7 @@ public:
 		MatrixProfile p = new MatrixProfile();
 
 		if ("avatar_url" in res)
-			p.avatarUrl = res["avatar_url"].str;
+			p.avatar = res["avatar_url"].str;
 
 		if ("displayname" in res)
 			p.displayName = res["displayname"].str;
@@ -634,8 +574,8 @@ public:
 		return p;
 	}
 
-	string createRoom(MatrixRoomPresetEnum preset = MatrixRoomPresetEnum.private_chat,
-		bool showInDirectory = false, string roomAlias = null, string name = null,
+	RoomID createRoom(MatrixRoomPresetEnum preset = MatrixRoomPresetEnum.private_chat,
+		bool showInDirectory = false, string roomAliasName = null, string name = null,
 		bool is_direct = false, string[] inviteUsers = [])
 	{
 		string url = buildUrl("createRoom");
@@ -647,8 +587,8 @@ public:
 
 		if (name)
 			req["name"] = name;
-		if (roomAlias)
-			req["room_alias_name"] = roomAlias;
+		if (roomAliasName)
+			req["room_alias_name"] = roomAliasName;
 
 		req["is_direct"] = is_direct;
 		req["invite"] = inviteUsers;
@@ -657,7 +597,7 @@ public:
 		import std.stdio;
 
 		writeln(res);
-		return res["room_id"].str;
+		return RoomID(res["room_id"].str);
 	}
 
 	/// Resolves the room alias to a room id, no authentication required
@@ -733,10 +673,10 @@ public:
 	}
 
 	/// Creates the direct message room and stores it's ID in account data
-	string createDirectMessageRoom(string user_id)
+	RoomID createDirectMessageRoom(string user_id)
 	{
 		/// Create the room
-		string roomId = createRoom(
+		RoomID room = createRoom(
 			MatrixRoomPresetEnum.private_chat, false, null, null,
 			true, [user_id]);
 
@@ -752,24 +692,24 @@ public:
 		{
 			dat["content"] = JSONValue();
 			dat["content"][user_id] = JSONValue();
-			dat["content"][user_id] = [roomId];
+			dat["content"][user_id] = [room.toString];
 		}
 		else
 		{
 			if (!(user_id in dat["content"]))
-				dat["content"][user_id] = [roomId];
+				dat["content"][user_id] = [room.toString];
 			else
-				dat["content"][user_id] ~= roomId;
+				dat["content"][user_id] ~= room.toString;
 		}
 
 		setAccountData("m.direct", dat);
-		return roomId;
+		return room;
 	}
 
-	string getOrCreateDirectMessageRoom(string user_id)
+	RoomID getOrCreateDirectMessageRoom(string user_id)
 	{
-		string roomId = getDirectMessageRoom(user_id);
-		return roomId ? roomId : createDirectMessageRoom(user_id);
+		RoomID roomId = getDirectMessageRoom(user_id);
+		return roomId ? RoomID(roomId) : createDirectMessageRoom(user_id);
 	}
 
 	/// Gets custom account data with specified type
@@ -835,7 +775,8 @@ class MatrixException : Exception
 
 class MatrixEvent
 {
-	string sender, roomId, eventId, type;
+	string sender, roomId, type;
+	EventID eventId;
 	long age;
 	JSONValue json;
 }
@@ -886,11 +827,6 @@ enum MatrixPresenceEnum : string
 
 class MatrixProfile
 {
-	string displayName, avatarUrl;
-}
-
-enum MatrixResizeMethod
-{
-	crop = "crop",
-	scale = "scale"
+	string displayName;
+	MXC avatar;
 }
