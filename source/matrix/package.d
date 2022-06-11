@@ -287,6 +287,7 @@ public:
 			e = msg;
 			break;
 
+			// Emoji reaction to a message
 		case "m.reaction":
 			MatrixReaction r = new MatrixReaction();
 
@@ -296,10 +297,20 @@ public:
 			r.relType = relatesTo["rel_type"].str;
 			e = r;
 			break;
-		}
-		/// Common event properties
 
-		if(e is null) e = new MatrixEvent();
+		case "m.room.redaction":
+			MatrixRedaction r = new MatrixRedaction();
+
+			r.redacts = ev["redacts"].str;
+			if ("reason" in ev["content"])
+				r.reason = ev["content"]["reason"].str;
+			e = r;
+			break;
+		}
+
+		/// Common event properties
+		if (e is null)
+			e = new MatrixEvent();
 
 		e.type = ev["type"].str;
 		if ("room_id" in ev)
@@ -392,7 +403,7 @@ public:
 		string url = buildUrl("rooms/%s/redact/%s/%d".format(translateRoomId(room), event, transactionId));
 
 		JSONValue json = JSONValue();
-		if(reason)
+		if (reason)
 			json["reason"] = reason;
 
 		JSONValue ret = put(url, json);
@@ -615,6 +626,12 @@ class MatrixMessage : MatrixEvent
 class MatrixTextMessage : MatrixMessage
 {
 	string format, formattedContent;
+}
+
+class MatrixRedaction : MatrixEvent
+{
+	EventID redacts;
+	string reason;
 }
 
 class MatrixDeviceInfo
