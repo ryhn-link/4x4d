@@ -81,20 +81,13 @@ public:
 		else static if (method == "OPTIONS")
 			http.method(HTTP.Method.options);
 
-		//import std.stdio;
-		//writeln(method ~ " " ~ url);
-		//writeln(data.toString);
-
 		if (!data.isNull)
 			http.postData(data.toString);
 		http.onReceive = (ubyte[] data) {
 			returnstr ~= cast(string) data;
 			return data.length;
 		};
-		//http.verbose(true);
 		CurlCode c = http.perform(ThrowOnError.no);
-		//writeln(c);
-		//writeln(returnstr);
 		returnbody = parseJSON(returnstr);
 		if (c)
 		{
@@ -303,14 +296,10 @@ public:
 			r.relType = relatesTo["rel_type"].str;
 			e = r;
 			break;
-
-			// Unknown events
-		default:
-		case "m.room.member":
-			e = new MatrixEvent();
-			break;
 		}
 		/// Common event properties
+
+		if(e is null) e = new MatrixEvent();
 
 		e.type = ev["type"].str;
 		if ("room_id" in ev)
@@ -446,7 +435,6 @@ public:
 		JSONValue res = post(url, req);
 		import std.stdio;
 
-		writeln(res);
 		return RoomID(res["room_id"].str);
 	}
 
@@ -488,7 +476,6 @@ public:
 		JSONValue resp = get(url);
 		import std.stdio;
 
-		writeln(resp);
 		MatrixPresence p = new MatrixPresence();
 		if ("currently_active" in resp)
 			p.currentlyActive = resp["currently_active"].boolean;
