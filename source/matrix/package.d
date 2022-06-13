@@ -91,7 +91,7 @@ public:
 	/// Joins a room by it's room id or alias, retuns it's room id
 	RoomID joinRoom(T)(T room) if (isSomeRoomID!T)
 	{
-		JSONValue ret = new RequestBuilder("join/%s".format(urlEncode(room)))
+		JSONValue ret = new RequestBuilder(buildUrl("join/%s".format(urlEncode(room))))
 			.addAuth(this)
 			.mxPost();
 
@@ -297,7 +297,7 @@ public:
 	{
 		JSONValue ret = new RequestBuilder(buildUrl("rooms/%s/send/%s/%d".format(urlEncode(room), eventType, transactionId)))
 			.addAuth(this)
-			.mxPost(json);
+			.mxPut(json);
 
 		transactionId++;
 		return EventID(ret["event_id"].str);
@@ -436,7 +436,7 @@ public:
 	/// NOTE: Room aliases don't have the same data as their resolved room ids
 	JSONValue getRoomData(string room_id, string type)
 	{
-		JSONValue resp = new RequestBuilder("user/%s/rooms/%s/account_data/%s".format(urlEncode(userId),
+		JSONValue resp = new RequestBuilder(buildUrl("user/%s/rooms/%s/account_data/%s".format(urlEncode(userId)),
 				urlEncode(room_id), type))
 				.addAuth(this)
 				.mxGet();
@@ -448,7 +448,7 @@ public:
 	/// NOTE: Room aliases don't have the same data as their resolved room ids
 	void setRoomData(string room_id, string type, JSONValue data)
 	{
-		new RequestBuilder("user/%s/rooms/%s/account_data/%s".format(urlEncode(userId),
+		new RequestBuilder(buildUrl("user/%s/rooms/%s/account_data/%s".format(urlEncode(userId)),
 				urlEncode(room_id), type))
 				.addAuth(this)
 				.mxPut(data);
@@ -472,7 +472,7 @@ public:
 
 	JSONValue getRoomStates(T)(T room) if (isSomeRoomID!T)
 	{
-		JSONValue resp = new RequestBuilder("rooms/%s/state".format(urlEncode(room)))
+		JSONValue resp = new RequestBuilder(buildUrl("rooms/%s/state".format(urlEncode(room))))
 			.addAuth(this)
 			.mxGet();
 

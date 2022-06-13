@@ -33,15 +33,23 @@ class RequestBuilder
 		return this;
 	}
 
+	Request createRequest()
+	{
+		Request r = Request();
+		r.sslSetVerifyPeer(false);
+		r.addHeaders(headers);
+		return r;
+	}
+
 	Response get()
 	{
-		Request r = Request(); r.sslSetVerifyPeer(false);
+		Request r = createRequest();
 		return r.get(url, params);
 	}
 
 	Response put()
 	{
-		Request r = Request(); r.sslSetVerifyPeer(false);
+		Request r = createRequest();
 		import requests.utils : aa2params;
 		return r.put(url, params.aa2params);
 	}
@@ -49,25 +57,25 @@ class RequestBuilder
 	Response put(T)(T data, string contentType)
 	{
 		import std.stdio;
-		Request r = Request(); r.sslSetVerifyPeer(false);
+		Request r = createRequest();
 		return r.put(url, data, contentType);
 	}
 
 	Response post()
 	{
-		Request r = Request(); r.sslSetVerifyPeer(false);
+		Request r = createRequest();
 		return r.post(url, params);
 	}
 
 	Response post(T)(T data, string contentType)
 	{
-		Request r = Request(); r.sslSetVerifyPeer(false);
+		Request r = createRequest();
 		return r.post(url, data, contentType);
 	}
 
 	Response del()
 	{
-		Request r = Request(); r.sslSetVerifyPeer(false);
+		Request r = createRequest();
 		return r.deleteRequest(url, params);
 	}
 }
@@ -78,7 +86,7 @@ RequestBuilder addAuth(RequestBuilder rb, MatrixClient c)
 	import std.exception : enforce;
 	enforce(c.accessToken, "Atempted to call authenticated method without access token");
 	rb.setHeader("Authorization", "Bearer " ~ c.accessToken);
-	rb.setParameter("access_token", c.accessToken);
+	//rb.setParameter("access_token", c.accessToken);
 	return rb;
 }
 

@@ -55,10 +55,10 @@ EventID addReaction(T)(MatrixClient c, T room, EventID event, string emoji)
 		if (isSomeRoomID!T)
 {
 	JSONValue json = JSONValue();
-	req["m.relates_to"] = JSONValue();
-	req["m.relates_to"]["rel_type"] = "m.annotation";
-	req["m.relates_to"]["event_id"] = event.toString;
-	req["m.relates_to"]["key"] = emoji;
+	json["m.relates_to"] = JSONValue();
+	json["m.relates_to"]["rel_type"] = "m.annotation";
+	json["m.relates_to"]["event_id"] = event.toString;
+	json["m.relates_to"]["key"] = emoji;
 
 	return c.sendEvent(room, "m.reaction", json);
 }
