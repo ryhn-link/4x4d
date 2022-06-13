@@ -7,8 +7,6 @@ import std.conv;
 import std.range;
 import std.regex;
 
-import std.uri : urlEncode = encode;
-
 public import matrix.mxc;
 public import matrix.cif;
 import matrix.utils;
@@ -27,9 +25,10 @@ private:
 	static const string[string] NULL_PARAMS;
 public:
 
-	string buildUrl(string endpoint, string section = "client", string api = "_matrix")
+	string buildUrl(string endpoint, string section = "client", string api = "_matrix", string versionOverride = null)
 	{
-		return "%s/%s/%s/%s/%s".format(this.homeserver, api, section, apiVersion, endpoint);
+		if(!versionOverride) versionOverride = apiVersion;
+		return "%s/%s/%s/%s/%s".format(this.homeserver, api, section, versionOverride, endpoint);
 	}
 
 	/// Should sync() keep the JSONValue reference 

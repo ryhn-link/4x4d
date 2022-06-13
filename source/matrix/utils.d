@@ -1,6 +1,7 @@
 module matrix.utils;
 
 import requests;
+public import std.uri : urlEncode = encode;
 
 class RequestBuilder
 {
@@ -16,8 +17,7 @@ class RequestBuilder
 
 	RequestBuilder setParameter(string key, string value)
 	{
-		if(value)
-			params[key] = value;
+		if(value) params[key] = value;
 		return this;
 	}
 
@@ -61,9 +61,14 @@ class RequestBuilder
 
 	Response post(T)(T data, string contentType)
 	{
-		import std.stdio;
 		Request r = Request(); r.sslSetVerifyPeer(false);
 		return r.post(url, data, contentType);
+	}
+
+	Response del()
+	{
+		Request r = Request(); r.sslSetVerifyPeer(false);
+		return r.deleteRequest(url, params);
 	}
 }
 
@@ -128,5 +133,11 @@ JSONValue mxPut(RequestBuilder rb, JSONValue json)
 JSONValue mxPut(T)(RequestBuilder rb, T data, string contentType)
 {
 	auto resp = rb.put(data, contentType);
+	return mxParseResponse(resp);
+}
+
+JSONValue mxDelete(RequestBuilder rb)
+{
+	auto resp = rb.del();
 	return mxParseResponse(resp);
 }
