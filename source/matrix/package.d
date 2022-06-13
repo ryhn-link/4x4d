@@ -7,8 +7,11 @@ import std.conv;
 import std.range;
 import std.regex;
 
+import std.uri : urlEncode = encode;
+
 public import matrix.mxc;
 public import matrix.cif;
+import matrix.utils;
 
 class MatrixClient
 {
@@ -18,108 +21,15 @@ class MatrixClient
 	uint transactionId;
 	string nextBatch;
 
+	string apiVersion = "v3";
+
 private:
 	static const string[string] NULL_PARAMS;
 public:
 
-	string buildUrl(string endpoint, const string[string] params = NULL_PARAMS,
-		string apiVersion = "unstable", string section = "client", bool auth = true)
+	string buildUrl(string endpoint, string section = "client", string api = "_matrix")
 	{
-		string url = "%s/_matrix/%s/%s/%s".format(this.homeserver, section, apiVersion, endpoint);
-		char concat = '?';
-
-		if (auth && this.accessToken.length)
-		{
-			url ~= "%caccess_token=%s".format(concat, this.accessToken);
-			concat = '&';
-		}
-
-		string paramString = this.makeParamString(params, concat);
-		if (paramString.length)
-			url ~= paramString;
-
-		return url;
-	}
-
-	string makeParamString(const string[string] params, char concat)
-	{
-		if (params.length == 0)
-		{
-			return "";
-		}
-		string result = "%s".format(concat);
-		foreach (key, value; params)
-		{
-			result ~= "%s=%s&".format(key, value);
-		}
-		return result[0 .. $ - 1];
-	}
-
-	string translateRoomId(string roomId)
-	{
-		return translate(roomId, ['#': "%23", ':': "%3A"]);
-	}
-
-	JSONValue makeHttpRequest(string method)(string url,
-		JSONValue data = JSONValue(), HTTP http = HTTP())
-	{
-		http.url(url);
-		JSONValue returnbody;
-		string returnstr = "";
-
-		static if (method == "GET")
-			http.method(HTTP.Method.get);
-		else static if (method == "POST")
-			http.method(HTTP.Method.post);
-		else static if (method == "PUT")
-		{
-			// Using the HTTP struct with PUT seems to hang, don't use it
-			http.method(HTTP.Method.put);
-		}
-		else static if (method == "DELETE")
-			http.method(HTTP.Method.del);
-		else static if (method == "OPTIONS")
-			http.method(HTTP.Method.options);
-
-		if (!data.isNull)
-			http.postData(data.toString);
-		http.onReceive = (ubyte[] data) {
-			returnstr ~= cast(string) data;
-			return data.length;
-		};
-		CurlCode c = http.perform(ThrowOnError.no);
-		returnbody = parseJSON(returnstr);
-		if (c)
-		{
-			throw new MatrixException(c, returnbody);
-		}
-		return returnbody;
-	}
-
-	JSONValue get(string url, JSONValue data = JSONValue())
-	{
-		return makeHttpRequest!("GET")(url, data);
-	}
-
-	JSONValue post(string url, JSONValue data = JSONValue())
-	{
-		return makeHttpRequest!("POST")(url, data);
-	}
-
-	JSONValue put(string url, JSONValue data = JSONValue())
-	{
-		// Using the HTTP struct with PUT seems to hang
-		// return makeHttpRequest!("PUT")(url, data);
-
-		// std.net.curl.put works fine
-		import std.net.curl : cput = put;
-
-		return parseJSON(cput(url, data.toString()));
-	}
-
-	JSONValue options(string url, JSONValue data = JSONValue())
-	{
-		return makeHttpRequest!("OPTIONS")(url, data);
+		return "%s/%s/%s/%s/%s".format(this.homeserver, api, section, apiVersion, endpoint);
 	}
 
 	/// Should sync() keep the JSONValue reference 
@@ -136,15 +46,17 @@ public:
 	/// If provided, server will invalidate the previous access token for this device
 	void passwordLogin(string user, string password, string device_id = null)
 	{
-		string url = buildUrl("login");
 		JSONValue req = JSONValue();
 		req["type"] = "m.login.password";
-		req["user"] = user;
+		req["identifier"] = JSONValue();
+		req["identifier"]["type"] = "m.id.user";
+		req["identifier"]["user"] = user;
 		req["password"] = password;
 		if (device_id)
 			req["device_id"] = device_id;
 
-		JSONValue resp = post(url, req);
+		JSONValue resp = new RequestBuilder(buildUrl("login"))
+			.mxPost(req);
 
 		this.accessToken = resp["access_token"].str;
 		this.userId = resp["user_id"].str;
@@ -157,8 +69,9 @@ public:
 		this.accessToken = access_token;
 		this.deviceId = device_id;
 
-		string url = buildUrl("account/whoami");
-		JSONValue ret = get(url);
+		JSONValue ret = new RequestBuilder(buildUrl("account/whoami"))
+			.addAuth(this)
+			.mxGet();
 
 		userId = ret["user_id"].str;
 		deviceId = ret["device_id"].str;
@@ -167,9 +80,9 @@ public:
 	/// ditto
 	RoomID[] getJoinedRooms()
 	{
-		string url = buildUrl("joined_rooms");
-
-		JSONValue result = get(url);
+		JSONValue result = new RequestBuilder(buildUrl("joined_rooms"))
+			.addAuth(this)
+			.mxGet();
 
 		import std.algorithm.iteration;
 
@@ -179,10 +92,10 @@ public:
 	/// Joins a room by it's room id or alias, retuns it's room id
 	RoomID joinRoom(T)(T room) if (isSomeRoomID!T)
 	{
-		// Why the hell are there 2 endpoints that do the *exact* same thing 
-		string url = buildUrl("join/%s".format(translateRoomId(room)));
+		JSONValue ret = new RequestBuilder("join/%s".format(urlEncode(room)))
+			.addAuth(this)
+			.mxPost();
 
-		JSONValue ret = post(url);
 		return RoomID(ret["room_id"].str);
 	}
 
@@ -191,13 +104,10 @@ public:
 	{
 		import std.stdio;
 
-		string[string] params;
-		if (nextBatch)
-			params["since"] = nextBatch;
-
-		string url = buildUrl("sync", params);
-
-		JSONValue response = get(url);
+		JSONValue response = new RequestBuilder(buildUrl("sync"))
+			.setParameter("since", nextBatch)
+			.addAuth(this)
+			.mxGet();
 
 		nextBatch = response["next_batch"].str;
 		if ("rooms" in response)
@@ -306,7 +216,7 @@ public:
 				r.reason = ev["content"]["reason"].str;
 			e = r;
 			break;
-		
+
 		default:
 			break;
 		}
@@ -334,26 +244,26 @@ public:
 	/// Gets an event from a room by it's ID
 	MatrixEvent getEvent(string room_id, string event_id, bool keepJSONReference = false)
 	{
-		string url = buildUrl("rooms/%s/context/%s".format(room_id, event_id));
+		JSONValue res = new RequestBuilder(buildUrl("rooms/%s/context/%s"
+				.format(urlEncode(room_id), urlEncode(event_id))))
 
-		JSONValue req = JSONValue();
-		req["limit"] = 1;
-
-		JSONValue res = get(url, req);
+			.addAuth(this)
+			.setParameter("limit", 1)
+			.mxGet();
 
 		return parseEvent(res["event"], keepJSONReference, room_id);
 	}
 
 	/// Sets the position of the read marker for given room
-	void markRead(T)(T room, EventID eventId) if(isSomeRoomID!T)
+	void markRead(T)(T room, EventID eventId) if (isSomeRoomID!T)
 	{
-		string url = buildUrl("rooms/%s/read_markers".format(translateRoomId(room)));
-
 		JSONValue req = JSONValue();
 		req["m.fully_read"] = eventId.toString;
 		req["m.read"] = eventId.toString;
 
-		post(url, req);
+		new RequestBuilder(buildUrl("rooms/%s/read_markers".format(urlEncode(room))))
+			.addAuth(this)
+			.mxPost(req);
 	}
 
 	/// Called when a new message is received
@@ -362,54 +272,48 @@ public:
 	void delegate(RoomID, string) inviteDelegate;
 
 	/// Uploads a file to the server and returns the MXC URI
-	MXC uploadFile(const void[] data, string filename, string mimetype)
+	MXC uploadFile(ubyte[] data, string filename, string mimetype)
 	{
-		string[string] params = ["filename": filename];
-		string url = buildUrl("upload", params, "r0", "media");
-
-		// TODO: Ratelimits
-		HTTP http = HTTP();
-		http.postData(data);
-		http.addRequestHeader("Content-Type", mimetype);
-		JSONValue resp = makeHttpRequest!("POST")(url, JSONValue(), http);
+		JSONValue resp = new RequestBuilder(buildUrl("upload", "media"))
+			.addAuth(this)
+			.setParameter("filename", filename)
+			.mxPost(data, mimetype);
 
 		return MXC(resp["content_uri"].str);
 	}
 
 	/// Used for downloading HTTP files, see MXC.getDownloadURL and MXC.getThumbnailURL
 	/// to download MXC files 
-	void[] downloadFile(string url, string mimeType = "*/*")
+	ubyte[] downloadFile(string url, string mimeType = "*/*")
 	{
-		auto http = HTTP(url);
-		http.method(HTTP.Method.get);
-		http.addRequestHeader("Accept", mimeType);
-		void[] ret;
-		http.onReceive = (ubyte[] data) { ret ~= data; return data.length; };
-		http.perform();
+		auto resp = new RequestBuilder(url)
+			.setHeader("Accept", mimeType)
+			.get();
 
-		return ret;
+		return resp.responseBody.data;
 	}
 
 	EventID sendEvent(T)(T room, string eventType, JSONValue json)
 			if (isSomeRoomID!(T))
 	{
-		string url = buildUrl("rooms/%s/send/%s/%d".format(translateRoomId(room), eventType, transactionId));
+		JSONValue ret = new RequestBuilder(buildUrl("rooms/%s/send/%s/%d".format(urlEncode(room), eventType, transactionId)))
+			.addAuth(this)
+			.mxPost(json);
 
-		JSONValue ret = put(url, json);
 		transactionId++;
-
 		return EventID(ret["event_id"].str);
 	}
 
 	EventID redactEvent(T)(T room, EventID event, string reason = null)
 	{
-		string url = buildUrl("rooms/%s/redact/%s/%d".format(translateRoomId(room), event, transactionId));
-
 		JSONValue json = JSONValue();
 		if (reason)
 			json["reason"] = reason;
 
-		JSONValue ret = put(url, json);
+		JSONValue ret =	new RequestBuilder(buildUrl("rooms/%s/redact/%s/%d".format(urlEncode(room), event, transactionId)))
+			.addAuth(this)
+			.mxPost(json);
+
 		transactionId++;
 
 		return EventID(ret["event_id"].str);
@@ -417,18 +321,17 @@ public:
 
 	string[] getRoomMembers(string room_id)
 	{
-		string url = buildUrl("rooms/%s/joined_members".format(translateRoomId(room_id)));
-
-		JSONValue res = get(url);
+		JSONValue res = new RequestBuilder(buildUrl("rooms/%s/joined_members".format(urlEncode(room_id))))
+			.addAuth(this)
+			.mxGet();
 
 		return res["joined"].object.keys;
 	}
 
 	MatrixProfile getProfile(UserID user_id)
 	{
-		string url = buildUrl("profile/" ~ user_id);
-
-		JSONValue res = get(url);
+		JSONValue res = new RequestBuilder(buildUrl("profile/%s".format(urlEncode(user_id))))
+			.mxGet();
 
 		MatrixProfile p = new MatrixProfile();
 
@@ -445,8 +348,6 @@ public:
 		bool showInDirectory = false, string roomAliasName = null, string name = null,
 		bool is_direct = false, string[] inviteUsers = [])
 	{
-		string url = buildUrl("createRoom");
-
 		JSONValue req = JSONValue();
 
 		req["preset"] = preset;
@@ -460,19 +361,19 @@ public:
 		req["is_direct"] = is_direct;
 		req["invite"] = inviteUsers;
 
-		JSONValue res = post(url, req);
-		import std.stdio;
+		JSONValue res = new RequestBuilder(buildUrl("createRoom"))
+			.addAuth(this)
+			.mxPost(req);
 
 		return RoomID(res["room_id"].str);
 	}
 
 	/// Resolves the room alias to a room id, no authentication required
-	string resolveRoomAlias(string roomalias)
+	string resolveRoomAlias(RoomAlias roomalias)
 	{
-		string url = buildUrl("directory/room/%s".format(translate(roomalias,
-				['#': "%23", ':': "%3A"])));
-
-		JSONValue resp = get(url);
+		JSONValue resp = new RequestBuilder(buildUrl("directory/room/%s".format(urlEncode(roomalias))))
+			.addAuth(this)
+			.mxGet();
 
 		return resp["room_id"].str;
 	}
@@ -481,8 +382,6 @@ public:
 	/// NOTE: No clients support status messages yet
 	void setPresence(MatrixPresenceEnum presence, string status_msg = null)
 	{
-		string url = buildUrl("presence/%s/status".format(userId));
-
 		JSONValue req;
 		req["presence"] = presence;
 		if (status_msg)
@@ -490,7 +389,9 @@ public:
 		else
 			req["status_msg"] = "";
 
-		put(url, req);
+		new RequestBuilder(buildUrl("presence/%s/status".format(urlEncode(userId))))
+			.addAuth(this)
+			.mxPost(req);
 	}
 
 	/// Gets the specified user's presence
@@ -499,10 +400,9 @@ public:
 		if (!userId)
 			userId = this.userId;
 
-		string url = buildUrl("presence/%s/status".format(userId));
-
-		JSONValue resp = get(url);
-		import std.stdio;
+		JSONValue resp = new RequestBuilder(buildUrl("presence/%s/status".format(urlEncode(userId))))
+			.addAuth(this)
+			.mxGet();
 
 		MatrixPresence p = new MatrixPresence();
 		if ("currently_active" in resp)
@@ -518,9 +418,9 @@ public:
 	/// Gets custom account data with specified type
 	JSONValue getAccountData(string type)
 	{
-		string url = buildUrl("user/%s/account_data/%s".format(userId, type));
-
-		JSONValue resp = get(url);
+		JSONValue resp = new RequestBuilder(buildUrl("user/%s/account_data/%s".format(urlEncode(userId), type)))
+			.addAuth(this)
+			.mxGet();
 
 		return resp;
 	}
@@ -528,19 +428,19 @@ public:
 	/// Sets custom account data for specified type
 	void setAccountData(string type, JSONValue data)
 	{
-		string url = buildUrl("user/%s/account_data/%s".format(userId, type));
-
-		put(url, data);
+		new RequestBuilder(buildUrl("user/%s/account_data/%s".format(urlEncode(userId), type)))
+			.addAuth(this)
+			.mxPut(data);
 	}
 
 	/// Get custom account data with specified type for the given room
 	/// NOTE: Room aliases don't have the same data as their resolved room ids
 	JSONValue getRoomData(string room_id, string type)
 	{
-		string url = buildUrl("user/%s/rooms/%s/account_data/%s".format(userId,
-				translateRoomId(room_id), type));
-
-		JSONValue resp = get(url);
+		JSONValue resp = new RequestBuilder("user/%s/rooms/%s/account_data/%s".format(urlEncode(userId),
+				urlEncode(room_id), type))
+				.addAuth(this)
+				.mxGet();
 
 		return resp;
 	}
@@ -549,10 +449,10 @@ public:
 	/// NOTE: Room aliases don't have the same data as their resolved room ids
 	void setRoomData(string room_id, string type, JSONValue data)
 	{
-		string url = buildUrl("user/%s/rooms/%s/account_data/%s".format(userId,
-				translateRoomId(room_id), type));
-
-		put(url, data);
+		new RequestBuilder("user/%s/rooms/%s/account_data/%s".format(urlEncode(userId),
+				urlEncode(room_id), type))
+				.addAuth(this)
+				.mxPut(data);
 	}
 
 	JSONValue getRoomState(T)(T room, string eventType, string stateKey = null)
@@ -560,20 +460,22 @@ public:
 	{
 		string url;
 		if (stateKey)
-			url = buildUrl("rooms/%s/state/%s/%s".format(translateRoomId(room), eventType, stateKey));
+			url = buildUrl("rooms/%s/state/%s/%s".format(urlEncode(room), eventType, stateKey));
 		else
-			url = buildUrl("rooms/%s/state/%s".format(translateRoomId(room), eventType));
-
-		JSONValue resp = get(url);
+			url = buildUrl("rooms/%s/state/%s".format(urlEncode(room), eventType));
+		
+		JSONValue resp = new RequestBuilder(url)
+			.addAuth(this)
+			.mxGet();
 
 		return resp;
 	}
 
 	JSONValue getRoomStates(T)(T room) if (isSomeRoomID!T)
 	{
-		string url = buildUrl("rooms/%s/state".format(translateRoomId(room)));
-
-		JSONValue resp = get(url);
+		JSONValue resp = new RequestBuilder("rooms/%s/state".format(urlEncode(room)))
+			.addAuth(this)
+			.mxGet();
 
 		return resp;
 	}
@@ -583,10 +485,13 @@ public:
 	{
 		string url;
 		if (stateKey)
-			url = buildUrl("rooms/%s/state/%s/%s".format(translateRoomId(room), eventType, stateKey));
+			url = buildUrl("rooms/%s/state/%s/%s".format(urlEncode(room), eventType, stateKey));
 		else
-			url = buildUrl("rooms/%s/state/%s".format(translateRoomId(room), eventType));
-		post(url, json);
+			url = buildUrl("rooms/%s/state/%s".format(urlEncode(room), eventType));
+
+		new RequestBuilder(url)
+			.addAuth(this)
+			.mxPost(json);
 	}
 }
 

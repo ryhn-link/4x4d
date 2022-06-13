@@ -3,6 +3,9 @@
 		"ryhon"
 	],
 	"copyright": "Copyright © 2021, ryhon",
+	"dependencies": {
+		"requests": "~>2.0.8"
+	},
 	"description": "Matrix (the chat protocol) Client-Server bot library",
 	"license": "LGPL-3.0",
 	"name": "4x4d"

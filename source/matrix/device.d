@@ -3,12 +3,14 @@ module matrix.device;
 import matrix;
 import std.json;
 import std.format;
+import matrix.utils;
 
 /// Get information about all devices for current user
 MatrixDeviceInfo[] getDevices(MatrixClient c)
 {
-	string url = c.buildUrl("devices");
-	JSONValue ret = c.get(url);
+	JSONValue ret = new RequestBuilder(c.buildUrl("devices"))
+		.addAuth(c)
+		.mxGet();
 
 	MatrixDeviceInfo[] inf;
 	foreach (d; ret["devices"].array)
@@ -31,8 +33,9 @@ MatrixDeviceInfo[] getDevices(MatrixClient c)
 /// Get information for a single device by it's device id
 MatrixDeviceInfo getDeviceInfo(MatrixClient c, string device_id)
 {
-	string url = c.buildUrl("devices/%s".format(device_id));
-	JSONValue ret = c.get(url);
+	JSONValue ret = new RequestBuilder(c.buildUrl("devices/%s".format(device_id)))
+		.addAuth(c)
+		.mxGet();
 
 	MatrixDeviceInfo i = new MatrixDeviceInfo();
 	i.deviceId = ret["device_id"].str;
@@ -53,28 +56,28 @@ void setDeviceName(MatrixClient c, string name, string device_id = null)
 	if (!device_id)
 		device_id = c.deviceId;
 
-	string url = c.buildUrl("devices/%s".format(device_id));
-
 	JSONValue req = JSONValue();
 	req["display_name"] = name;
 
-	c.put(url, req);
+	new RequestBuilder(c.buildUrl("devices/%s".format(device_id)))
+		.addAuth(c)
+		.mxPost(req);
 }
 
 /// Deletes devices, uses a password for authentication
 /// NOTE: This will only work if the homeserver requires ONLY a password authentication
 void deleteDevicesUsingPassword(MatrixClient c, string[] devices, string password)
 {
-	string url = c.buildUrl("delete_devices");
-
-	string session;
 	JSONValue noauthresp;
+	
+	string session;
 
 	// This is gonna reply with 401 and give us the session
 	try
 	{
-		// Freezes here :/
-		noauthresp = c.post(url);
+		new RequestBuilder(c.buildUrl("delete_devices"))
+			.addAuth(c)
+			.mxPost();
 	}
 	catch (MatrixException e)
 	{
@@ -94,5 +97,7 @@ void deleteDevicesUsingPassword(MatrixClient c, string[] devices, string passwor
 	req["auth"]["password"] = password;
 	req["devices"] = devices;
 
-	c.post(url, req);
+	new RequestBuilder(c.buildUrl("delete_devices"))
+		.addAuth(c)
+		.mxPost(req);
 }
